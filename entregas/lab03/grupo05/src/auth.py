@@ -11,9 +11,20 @@ import argparse, hashlib, hmac, secrets, struct, sys, time
 def hash_password(password: str, salt: bytes = None, iters: int = 200_000) -> str:
     """Devuelve una cadena 'pbkdf2_sha256$iters$salt_hex$dk_hex'.
     Pista: secrets.token_bytes para el salt; hashlib.pbkdf2_hmac('sha256', ...).
-    ¿Por qué salt por usuario? ¿Por qué 200.000 iteraciones y no una?"""
-    # TODO
-    raise NotImplementedError("Completá hash_password()")
+    ¿Por qué salt por usuario? ¿Por qué 200.000 iteraciones y no una?
+
+    El salt es aleatorio y distinto por usuario: dos usuarios con la misma
+    contraseña quedan con derivadas distintas, y una tabla precomputada
+    (rainbow table) deja de servir. Las iteraciones encarecen cada intento
+    del atacante: probar un diccionario cuesta 200.000 veces más que contra
+    un hash de una sola pasada.
+    """
+    if salt is None:
+        salt = secrets.token_bytes(16)          # 128 bits, CSPRNG
+    if iters < 1:
+        raise ValueError("iters debe ser >= 1")
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iters)
+    return f"pbkdf2_sha256${iters}${salt.hex()}${dk.hex()}"
 
 def verify_password(password: str, almacenado: str) -> bool:
     """Verifica una contraseña contra el registro de hash_password().
