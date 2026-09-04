@@ -192,3 +192,149 @@ Lo que RockYou debió hacer — y lo que implementamos en la Parte B:
 7. Chick3nman — *Hashcat v6.2.6 benchmark on the NVIDIA RTX 4090*. https://gist.github.com/Chick3nman/32e662a5bb63bc4f51b847bb422222fd — (SHA-1: 50.638,7 MH/s; PBKDF2-HMAC-SHA256: 8.865,7 kH/s; bcrypt: 184,0 kH/s) — base de los cálculos de § 1.3 y § 2.2.
 8. Krebs, B. — *As Scope of 2012 Breach Expands, LinkedIn to Again Reset Passwords for Some Users*, KrebsOnSecurity, 18/05/2016. https://krebsonsecurity.com/2016/05/as-scope-of-2012-breach-expands-linkedin-to-again-reset-passwords-for-some-users/ — usada sólo para el contraste del § 1.4 (LinkedIn: 117 M de hashes SHA-1 sin salt).
 
+---
+
+## 2. Parte B.1 — Contraseñas
+
+Implementado en [`src/auth.py`](src/auth.py). Formato del registro:
+
+```
+pbkdf2_sha256$200000$4f9a...b1$0dae...24
+   algoritmo  iters   salt (16 B)  derivada (32 B)
+```
+
+```
+$ python3 src/auth.py hash --password 'Phantom-2026!'
+pbkdf2_sha256$200000$c06781c52210fe790f40ce502ced9e49$9230aa23b451171b3d8a359c16c08550802a0161744320bbc17e73ae8e2676a1
+$ python3 src/auth.py verify --password 'Phantom-2026!' --registro 'pbkdf2_sha256$200000$c06781c52210fe790f40ce502ced9e49$9230aa23b451171b3d8a359c16c08550802a0161744320bbc17e73ae8e2676a1'
+OK
+$ python3 src/auth.py verify --password 'Phantom-2027!' --registro 'pbkdf2_sha256$200000$c06781...'
+FALLO     # exit code 1
+```
+
+Decisiones de diseño:
+
+- **Salt de 16 bytes** de `secrets.token_bytes` (CSPRNG del sistema, no `random`).
+  128 bits, muy por encima de los 32 bits que exige NIST.
+- **Los parámetros viajan en el registro.** `verify_password` relee iteraciones y
+  salt desde ahí en vez de asumir los suyos: cuando haya que subir el costo, los
+  registros viejos siguen validando y se pueden rehashear al vuelo.
+- **Registro corrupto o ajeno → `False`**, nunca una excepción: un `500` en el
+  login también es información para el atacante.
+
+Frente a la Parte A conviene decir lo obvio: **RockYou no falló en esto, falló
+antes**. No eligió mal el algoritmo, no eligió ninguno. Lo que sigue es el
+escalón que nunca subió — y la razón por la que subirlo a medias (hashear sin
+salt, o con un hash rápido) sigue siendo insuficiente **precisamente por culpa de
+`rockyou.txt`**.
+
+### 2.1 ¿Por qué salt **por usuario**?
+
+Porque sin salt, `hash(contraseña)` es una **función global**, y eso rompe tres
+cosas a la vez. Con dos usuarios que eligieron la misma contraseña se ve al toque
+*(medido)*:
+
+```
+sin salt (sha256 pelado):  8d969eef6ecad3c29a3a6292  ==  8d969eef6ecad3c29a3a6292   → True
+con salt por usuario:      97e57a0ef7ae155571e0af4d  vs  dc812e6f28297850a319d2d5   → False
+```
+
+1. **Filtra información sin crackear nada.** Con la columna sin salt, el atacante
+   agrupa hashes iguales y ya sabe qué cuentas comparten contraseña — y cuál es la
+   más popular, que es la primera que conviene atacar. Sobre una base tipo
+   RockYou eso significa ubicar de una las **290.731 cuentas con `123456`** sin
+   invertir un solo ciclo de CPU: el histograma se ve directo en la tabla.
+2. **Habilita la precomputación.** Una rainbow table se calcula una vez y sirve
+   contra todas las víctimas de todos los sitios. Con 128 bits de salt, el
+   atacante tendría que almacenar o computar 2¹²⁸ valores más **por contraseña**:
+   deja de existir como ataque.
+3. **Habilita el ataque por lotes**, que es el que multiplica el daño: un
+   candidato hasheado se prueba contra **todos** los hashes de la base de una sola
+   vez (una búsqueda en un set ordenado, costo despreciable). Con salt único, el
+   atacante tiene que **repetir todo el trabajo por cada usuario**. Con las
+   velocidades del § 1.3: pasar `rockyou.txt` contra las 32,6 M de cuentas sin
+   salt son **0,3 ms**; con salt y PBKDF2 a 200.000 iteraciones son **334 años**
+   de esa misma GPU.
+
+El salt **no es secreto** y no necesita serlo: no protege la contraseña, destruye
+la economía de escala del atacante.
+
+### 2.2 ¿Por qué **muchas** iteraciones?
+
+Porque el defensor paga el costo **una vez por login** y el atacante lo paga
+**una vez por candidato**. Las iteraciones son la única palanca que mueve esa
+asimetría a nuestro favor. *Medido en esta máquina:*
+
+| | Costo por operación | Intentos/s por core |
+|---|---:|---:|
+| `sha256` pelado (1 pasada) | 0,6 µs | 1.760.676 |
+| PBKDF2-SHA256, 1 iteración | 2,2 µs | ~455.000 |
+| **PBKDF2-SHA256, 200.000 iteraciones** | **43,1 ms** | **23,2** |
+| PBKDF2-SHA256, 600.000 iteraciones (OWASP) | 129,3 ms | 7,7 |
+
+200.000 iteraciones encarecen cada intento **~78.000 veces** respecto de un
+`sha256` pelado, y al defensor le cuestan 43 ms: imperceptible en un login,
+letal en un diccionario.
+
+Puesto sobre las cifras de Imperva, que son de usuarios reales y no de
+contraseñas hipotéticas — costo en GPU (44.328 h/s) de atacar **una** cuenta con
+las contraseñas más populares:
+
+| Objetivo del atacante | Intentos por cuenta | Con SHA-1 sin salt | Con PBKDF2-200k y salt |
+|---|---:|---:|---:|
+| 0,9% de las cuentas | 1 | instantáneo | 0,02 ms |
+| 5% de las cuentas | 116 | instantáneo | 2,6 ms |
+| 10% de las cuentas | 683 | instantáneo | 15 ms |
+| 20% de las cuentas | 5.000 | instantáneo | 113 ms |
+| `rockyou.txt` completo | 14.341.564 | 0,3 ms | **5,4 min** |
+
+Y acá está la lección incómoda, que preferimos decir explícitamente antes de que
+la rúbrica nos la marque: **contra `123456`, PBKDF2 no sirve para nada**. 113 ms
+para el 20% de las cuentas es gratis para cualquier atacante. Las iteraciones
+multiplican el costo de recorrer un espacio; si la contraseña está en el primer
+puñado de candidatos, no hay espacio que recorrer. **Las iteraciones compran
+tiempo, no impunidad**: son necesarias, y son inútiles sin política de
+contraseñas, lista de bloqueo y segundo factor. El caso RockYou es la
+demostración empírica de que el eslabón débil está del lado del usuario, y por
+eso el § 1.5 pone el punto 5 al mismo nivel que el 2.
+
+Un efecto secundario que sí ayuda contra el ataque **online** de Imperva: con
+43 ms por verificación, el servidor no puede procesar más de **23,2 intentos de
+login por segundo por core**. Los 110 intentos/s que asumía Imperva con un DSL de
+2009 ya no entran: la KDF actúa de freno natural. No reemplaza al rate limiting
+— es CPU nuestra la que se consume — pero cambia la aritmética del atacante.
+
+Dos advertencias más que salen de medir y no de suponer:
+
+- **El esqueleto usa 200.000 y OWASP hoy pide 600.000** para PBKDF2-HMAC-SHA256.
+  Dejamos el default del enunciado para no cambiar la firma, pero en producción
+  iríamos a 600.000 (129 ms medidos, todavía aceptable) o directamente a
+  **Argon2id**, que es memory-hard y le saca a la GPU su ventaja (ver
+  [`research.md`](research.md)).
+- Las iteraciones son también un vector de **DoS**: 129 ms de CPU por intento de
+  login es algo que hay que combinar con rate limiting, no algo que se sube sin
+  medir.
+
+### 2.3 Verificación en tiempo constante
+
+`verify_password` compara con `hmac.compare_digest`, que recorre **todos** los
+bytes siempre. La comparación ingenua (`==` byte a byte, cortando en la primera
+diferencia) tarda distinto según **cuánto del prefijo acertó el atacante**, y eso
+es un oráculo: se adivina el token byte por byte, y en lugar de 256³² intentos
+son 32×256. *Medido* sobre 32 bytes, mínimo de 7 bloques de 20.000 repeticiones:
+
+| Dónde está la primera diferencia | Comparación ingenua | `hmac.compare_digest` |
+|---|---:|---:|
+| byte 0 | 188 ns | 46 ns |
+| byte 16 | 439 ns | 47 ns |
+| byte 31 | 656 ns | 47 ns |
+| idénticos | 669 ns | 48 ns |
+
+La ingenua **filtra 3,5×**; `compare_digest` es plana (dispersión ~1–13%, dentro
+del ruido). En este lab el valor comparado es una derivada de PBKDF2, así que la
+fuga es de bajo impacto — pero el mismo error en un MAC, un token de sesión o un
+código TOTP es explotable, y escribirlo bien no cuesta nada. Nótese que el login
+de RockYou, al comparar texto plano contra texto plano, tenía **esta misma falla
+además** de la principal: la fuga de tiempo revelaba el prefijo de la contraseña
+real, no de un hash.
+
