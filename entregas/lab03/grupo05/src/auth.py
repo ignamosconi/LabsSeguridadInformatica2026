@@ -81,7 +81,9 @@ def main() -> int:
     p = sub.add_parser("totp"); p.add_argument("--secret", required=True, help="secreto ASCII"); p.add_argument("--t", type=int, default=None)
     a = ap.parse_args()
     if a.cmd == "hash": print(hash_password(a.password))
-    elif a.cmd == "verify": print("OK" if verify_password(a.password, a.registro) else "FALLO"); return 0 if verify_password(a.password, a.registro) else 1
+    elif a.cmd == "verify":
+        ok = verify_password(a.password, a.registro)   # una sola derivación
+        print("OK" if ok else "FALLO"); return 0 if ok else 1
     elif a.cmd == "totp": print(totp(a.secret.encode(), a.t))
     return 0
 
