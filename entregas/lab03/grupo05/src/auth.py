@@ -28,9 +28,27 @@ def hash_password(password: str, salt: bytes = None, iters: int = 200_000) -> st
 
 def verify_password(password: str, almacenado: str) -> bool:
     """Verifica una contraseña contra el registro de hash_password().
-    DEBE comparar en tiempo constante (hmac.compare_digest)."""
-    # TODO
-    raise NotImplementedError("Completá verify_password()")
+    DEBE comparar en tiempo constante (hmac.compare_digest).
+
+    Los parámetros (iteraciones y salt) viajan en el propio registro: se
+    releen de ahí para rederivar la clave con exactamente la misma receta.
+    """
+    try:
+        algo, iters_s, salt_hex, dk_hex = almacenado.split("$")
+        if algo != "pbkdf2_sha256":
+            return False
+        iters = int(iters_s)
+        salt = bytes.fromhex(salt_hex)
+        dk_guardada = bytes.fromhex(dk_hex)
+    except (ValueError, AttributeError):
+        return False                            # registro corrupto o ajeno
+    if iters < 1 or not salt or not dk_guardada:
+        return False
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iters,
+                             dklen=len(dk_guardada))
+    # compare_digest no corta en la primera diferencia: no filtra por tiempo
+    # cuántos bytes del prefijo acertó el atacante.
+    return hmac.compare_digest(dk, dk_guardada)
 
 # --- B.2: segundo factor (TOTP / RFC 6238) ---
 def hotp(secret: bytes, contador: int, digitos: int = 6, algo: str = "sha1") -> str:
