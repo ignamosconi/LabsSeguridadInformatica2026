@@ -2,8 +2,12 @@
 """
 auth.py — Laboratorio 03. Autenticación hecha bien. Solo biblioteca estándar.
 
-Completá los TODO. NO cambies las firmas ni la CLI. `hotp()` viene implementada
-como referencia (es la base del TOTP): leela.
+Entrega del Grupo 05 — TODO completados. Firmas y CLI sin cambios respecto del
+esqueleto de la cátedra. `hotp()` es la de la cátedra (base del TOTP).
+
+  python3 src/auth.py hash   --password 'Phantom-2026!'
+  python3 src/auth.py verify --password 'Phantom-2026!' --registro 'pbkdf2_sha256$...'
+  python3 src/auth.py totp   --secret 12345678901234567890 --t 59   # -> 287082
 """
 import argparse, hashlib, hmac, secrets, struct, sys, time
 
