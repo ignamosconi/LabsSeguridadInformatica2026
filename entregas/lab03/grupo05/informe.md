@@ -338,3 +338,145 @@ de RockYou, al comparar texto plano contra texto plano, tenía **esta misma fall
 además** de la principal: la fuga de tiempo revelaba el prefijo de la contraseña
 real, no de un hash.
 
+---
+
+## 3. Parte B.2 — TOTP
+
+Implementado en `totp()`. Es HOTP (RFC 4226) donde el contador no lo lleva el
+servidor sino **el reloj**: `contador = ⌊t / 30⌋`. Cliente y servidor llegan al
+mismo número sin comunicarse; de ahí que el código viva 30 segundos.
+
+**Vector oficial del RFC 6238** *(medido)*:
+
+```
+$ python3 src/auth.py totp --secret 12345678901234567890 --t 59
+287082
+```
+
+`src/pruebas.py` verifica los **6 vectores** del Appendix B del RFC 6238, los
+**10** del Appendix D del RFC 4226, y que `totp(59, digitos=8) = 94287082`:
+
+| `t` | esperado | obtenido |
+|---:|---|---|
+| 59 | 287082 | 287082 ✅ |
+| 1111111109 | 081804 | 081804 ✅ |
+| 1111111111 | 050471 | 050471 ✅ |
+| 1234567890 | 005924 | 005924 ✅ |
+| 2000000000 | 279037 | 279037 ✅ |
+| 20000000000 | 353130 | 353130 ✅ |
+
+### 3.1 ¿Por qué el TOTP frena al atacante de la Parte A?
+
+Porque **cambia el tipo de secreto que hace falta**, y el atacante de RockYou es
+el caso extremo: no se quedó con hashes que hay que romper, se quedó con
+**32 millones de contraseñas listas para usar**. Contra un login de un solo
+factor, esa lista *es* el acceso. El TOTP exige además *algo que la víctima
+tiene* — la semilla compartida dentro de su teléfono. Y esa semilla:
+
+- **no estaba en la base filtrada**: ni siquiera existía el concepto; y en un
+  diseño correcto, robar la tabla de contraseñas no la revela;
+- **no viaja en el login**: sólo viaja un código derivado de ella;
+- **caduca en 30 segundos**, así que un código capturado hoy no sirve mañana; y
+- **no se puede atacar offline**: 10⁶ combinaciones se agotarían rápido, pero no
+  hay dónde probarlas salvo contra el servidor, y ahí entra el rate limiting.
+
+Concretamente, sobre los números del § 1.3: con la lista en la mano, el atacante
+abría el 0,9% de las cuentas **al primer intento** y el 20% con 5.000. Con TOTP
+activo, esos aciertos se detienen en el segundo factor: la contraseña correcta
+deja de ser suficiente. Y lo que corta de raíz es el **credential stuffing** — el
+reuso de esas 32 M de contraseñas contra webmail, MySpace y Facebook — que es el
+negocio de escala del atacante y el daño mayor de este caso.
+
+### 3.2 Qué **no** protege el TOTP
+
+Esta es la parte que se suele omitir. El TOTP mitiga el **robo offline y el reuso
+de credenciales**; no mitiga a un atacante que está en el medio o adentro:
+
+| Amenaza | ¿Lo frena el TOTP? | Por qué |
+|---|---|---|
+| **Phishing en tiempo real / AitM** (Evilginx, Modlishka) | ❌ | El proxy pide el código y lo reenvía dentro de los 30 s. El usuario teclea el código en el sitio falso: es un secreto *transmisible*. La contramedida real es WebAuthn/passkeys, que atan la credencial al **origen** |
+| **Robo de cookie de sesión** | ❌ | El 2FA se valida al inicio de sesión; si roban la sesión ya establecida, nadie vuelve a pedir el código |
+| **Malware en el endpoint** | ❌ | Lee el código de la pantalla, o la semilla de la app |
+| **Brecha del servidor** | ❌ | Las semillas se guardan del lado del servidor y son **simétricas**: si se filtran sin cifrar, el atacante genera los códigos de todos. Es exactamente el error de RockYou repetido un nivel más arriba — y por eso las semillas se cifran con una clave que vive en un HSM, no en la base |
+| **La SQLi que abrió la brecha** | ❌ | El 2FA protege el login, no la base de datos. RockYou cayó por una inyección SQL: con TOTP habría filtrado exactamente lo mismo |
+| **Credenciales de terceros guardadas en claro** | ❌ | Las casillas de webmail que RockYou almacenaba se abren en **otro** sitio, donde nuestro segundo factor no existe |
+| **Ingeniería social del código** | ❌ | *"Somos del soporte, leenos el número de 6 dígitos"* |
+| **SIM swapping / SS7** | ✅ | Acá el TOTP **sí** gana: a diferencia del 2FA por SMS, la semilla vive en el dispositivo y no depende de la operadora telefónica |
+| **Replay dentro de la ventana** | ⚠️ | Si el servidor no marca el código como usado, sirve dos veces en los mismos 30 s. Hay que registrar el último contador aceptado por usuario |
+| **Desfase de reloj** | ⚠️ | Aceptar ±1 paso es habitual y razonable; aceptar ±10 estira la ventana a 5 minutos y regala tiempo al atacante |
+| **Autorización** | ❌ | El TOTP responde *"¿sos quien decís ser?"*, no *"¿podés hacer esto?"*. Un usuario autenticado con 2FA que accede a `/api/factura/12345` que no es suya es un **IDOR**: se resuelve con control de acceso **en el servidor**, y el segundo factor no tiene nada que ver |
+| **Contraseñas mal guardadas** | ❌ | El 2FA es una capa **adicional**, no un permiso para seguir guardando texto plano. Con 2FA, RockYou habría filtrado igual 32 M de contraseñas en claro — y con ellas, las cuentas de todos los **otros** sitios donde esos usuarios las reusaban |
+
+Resumen: el TOTP habría convertido la brecha de RockYou en un incidente grave en
+lugar de un desastre en cascada. **No** habría evitado la brecha, no habría
+salvado ni una contraseña de la publicación, y no habría impedido que naciera
+`rockyou.txt`.
+
+---
+
+## 4. Bitácora de comandos
+
+```bash
+# Preparación (según el enunciado)
+mkdir -p entregas/lab03/grupo05
+cp -r labs/lab03-autenticacion/src entregas/lab03/grupo05/src
+cd entregas/lab03/grupo05
+
+# B.1 — contraseñas
+python3 src/auth.py hash --password hola
+# pbkdf2_sha256$200000$e0e09cb2f4399ed4e45acb4d0aa14c64$0daed631dc07113ee6565e9f737d80482a6038177a5021107d38f2f1abef1924
+
+REG=$(python3 src/auth.py hash --password 'Phantom-2026!')
+python3 src/auth.py verify --password 'Phantom-2026!' --registro "$REG"   # OK    (exit 0)
+python3 src/auth.py verify --password 'Phantom-2027!' --registro "$REG"   # FALLO (exit 1)
+
+# El salt es aleatorio: la misma contraseña da registros distintos
+python3 src/auth.py hash --password hola
+python3 src/auth.py hash --password hola
+
+# B.2 — TOTP contra el vector oficial del RFC 6238
+python3 src/auth.py totp --secret 12345678901234567890 --t 59   # 287082  ✅
+python3 -c "import sys;sys.path.insert(0,'src');import auth
+print(auth.totp(b'12345678901234567890',59,digitos=8))"         # 94287082 ✅
+python3 src/auth.py totp --secret 12345678901234567890          # codigo del paso actual
+
+# Suite completa: 6 vectores RFC 6238 + 10 RFC 4226 + PBKDF2 + tiempo constante
+python3 src/pruebas.py                                          # 40/40 → "Todas las pruebas pasaron."
+echo $?                                                         # 0
+
+# Mediciones de § 2.2 (costo del defensor)
+python3 -c "
+import hashlib,statistics,time
+for it in (1,200_000,600_000):
+    t=[]
+    for _ in range(10):
+        t0=time.perf_counter(); hashlib.pbkdf2_hmac('sha256',b'x',b'y'*16,it); t.append(time.perf_counter()-t0)
+    print(f'{it:>7,} iters -> {statistics.median(t)*1000:8.2f} ms')"
+#       1 iters ->     0.00 ms
+# 200,000 iters ->    43.06 ms
+# 600,000 iters ->   129.32 ms
+
+# Economia del atacante de § 1.3 y § 2.2 (velocidades publicadas de hashcat)
+python3 -c "
+sha1=50638.7e6; pb=8865.7e3*1000/200_000; rk=14_341_564; cuentas=32_603_388
+print(f'rockyou.txt vs SHA-1 sin salt        : {rk/sha1*1000:.2f} ms')
+print(f'rockyou.txt vs PBKDF2-200k (1 cuenta): {rk/pb/60:.1f} min')
+print(f'rockyou.txt vs 32,6M cuentas con salt: {rk*cuentas/pb/31_536_000:.0f} anios')
+print(f'top-5000    vs PBKDF2-200k (1 cuenta): {5000/pb*1000:.0f} ms')"
+# rockyou.txt vs SHA-1 sin salt        : 0.28 ms
+# rockyou.txt vs PBKDF2-200k (1 cuenta): 5.4 min
+# rockyou.txt vs 32,6M cuentas con salt: 334 anios
+# top-5000    vs PBKDF2-200k (1 cuenta): 113 ms
+
+# Entorno de las mediciones
+grep -m1 'model name' /proc/cpuinfo && nproc && python3 -V
+python3 -c "import ssl;print(ssl.OPENSSL_VERSION)"
+```
+
+---
+
+*Ley 26.388 · Todo el trabajo se hizo sobre el esqueleto de la cátedra y en la
+máquina propia del grupo. No se atacó ningún sistema de terceros y no se
+descargó, alojó ni procesó la lista de contraseñas filtrada: los datos de la
+Parte A provienen exclusivamente de las fuentes públicas citadas en § 1.6, y las
+cifras de cracking son cálculos sobre benchmarks publicados.*
