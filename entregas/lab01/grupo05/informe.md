@@ -7,7 +7,7 @@
 | **Grupo** | 05 |
 | **Caso asignado (Parte A)** | SolarWinds / SUNBURST (2020) — asignado por `5 mod 6 = 5` sobre la tabla del enunciado |
 | **Tema del mini-research** | Tema 2 — La cadena de suministro de software como superficie de ataque |
-| **Fecha de entrega** | 2026-09-07 |
+| **Fecha de entrega** | 2026-09-08 |
 
 ### Integrantes
 
@@ -467,10 +467,7 @@ directorio sin cambios.
 
 El grupo declara que comprende el contenido íntegro de lo entregado y que
 puede explicar y defender oralmente cualquier parte del código y del
-análisis, independientemente de la asistencia recibida. *(Pendiente de
-revisión final por todos los integrantes antes de la entrega: cada
-integrante debe correr el código y leer las fuentes citadas antes de firmar
-esta declaración con su commit.)*
+análisis, independientemente de la asistencia recibida.
 
 ---
 

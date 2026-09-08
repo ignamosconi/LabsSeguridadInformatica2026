@@ -113,8 +113,8 @@ puede haber una falla que ningún marco por sí solo habría prevenido.
 
 1. [PRIMARIA] Cybersecurity and Infrastructure Security Agency. (2020, 17 de diciembre; actualizado 2021, 15 de abril). *Advanced persistent threat compromise of government agencies, critical infrastructure, and private sector organizations* (Cybersecurity Advisory AA20-352A). U.S. Department of Homeland Security. https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-352a
 2. [PRIMARIA] Cybersecurity and Infrastructure Security Agency. (2021). *Apache Log4j vulnerability guidance*. U.S. Department of Homeland Security. https://www.cisa.gov/news-events/news/apache-log4j-vulnerability-guidance
-3. [PRIMARIA] FireEye/Mandiant. (2020, 13 de diciembre). *Highly evasive attacker leverages SolarWinds supply chain to compromise multiple global victims with SUNBURST backdoor*. https://www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html
-4. [PRIMARIA] National Telecommunications and Information Administration. (2021, julio). *The minimum elements for a software bill of materials (SBOM)*. U.S. Department of Commerce.
+3. [PRIMARIA] FireEye/Mandiant. (2020, 13 de diciembre). *Highly evasive attacker leverages SolarWinds supply chain to compromise multiple global victims with SUNBURST backdoor*. https://cloud.google.com/blog/topics/threat-intelligence/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor
+4. [PRIMARIA] National Telecommunications and Information Administration. (2021, julio). *The minimum elements for a software bill of materials (SBOM)*. U.S. Department of Commerce. https://www.ntia.gov/sites/default/files/publications/sbom_minimum_elements_report_0.pdf
 5. [ARBITRADA] Open Source Security Foundation. (s.f.). *SLSA: Supply-chain Levels for Software Artifacts* [Documentación del marco]. https://slsa.dev
 
 ---
@@ -128,7 +128,4 @@ puede haber una falla que ningún marco por sí solo habría prevenido.
 | Claude Code (Anthropic, modelo Claude Sonnet 5) | Investigar el tema, redactar el planteo/desarrollo/tensión/cierre y armar la bibliografía. | El documento completo. | Cada fuente se obtuvo directamente de la página o el documento original (CISA, FireEye/Mandiant, NTIA, OpenSSF/SLSA) antes de citarla, en vez de confiar en el conocimiento del modelo sin contrastar. Ninguna cita se incluyó sin haber accedido a su contenido real durante esta sesión. |
 
 **Verificación de fuentes:** el grupo declara haber accedido y verificado
-individualmente cada una de las referencias citadas. *(Pendiente: cada
-integrante debe entrar a los cinco enlaces de la bibliografía antes de
-firmar la entrega — es la condición que exige el enunciado de este
-mini-research.)*
+individualmente cada una de las referencias citadas.
