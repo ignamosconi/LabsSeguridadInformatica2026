@@ -255,16 +255,37 @@ def verificar_manifiesto(
           Un consumidor que tiene que hacer `.get(clave, [])` es un consumidor
           al que le pasaste un contrato flojo.
     """
-    # ----------------------------------------------------------------------
-    # TODO 2: implementar la clasificación en OK / MODIFICADO / FALTANTE / NUEVO.
-    #         Borrá el `raise` de abajo y escribí tu código.
-    # ----------------------------------------------------------------------
-    raise NotImplementedError(
-        "TODO 2 de 4 — verificar_manifiesto() sin implementar.\n"
-        "  Qué falta: comparar el directorio contra el manifiesto y devolver\n"
-        "  el diccionario con las cuatro categorías OK/MODIFICADO/FALTANTE/NUEVO.\n"
-        "  Leé el docstring de esta función: está la estructura exacta esperada."
-    )
+    directorio = directorio.resolve()
+    ruta_manifiesto_resuelta = ruta_manifiesto.resolve()
+
+    del_disco: set[str] = set()
+    for ruta in directorio.rglob("*"):
+        if not ruta.is_file():
+            continue
+        if ruta.resolve() == ruta_manifiesto_resuelta:
+            continue
+        del_disco.add(ruta.relative_to(directorio).as_posix())
+
+    del_manifiesto = set(manifiesto.keys())
+
+    resultado: dict[str, list[str]] = {
+        ESTADO_OK: [],
+        ESTADO_MODIFICADO: [],
+        ESTADO_FALTANTE: [],
+        ESTADO_NUEVO: [],
+    }
+
+    for clave in sorted(del_disco & del_manifiesto):
+        digest_actual = sha256_archivo(directorio / clave)
+        if digest_actual == manifiesto[clave]:
+            resultado[ESTADO_OK].append(clave)
+        else:
+            resultado[ESTADO_MODIFICADO].append(clave)
+
+    resultado[ESTADO_FALTANTE] = sorted(del_manifiesto - del_disco)
+    resultado[ESTADO_NUEVO] = sorted(del_disco - del_manifiesto)
+
+    return resultado
 
 
 # ==========================================================================
