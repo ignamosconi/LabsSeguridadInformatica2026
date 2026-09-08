@@ -425,52 +425,61 @@ inicio de sesión.
 
 ## Dificultades encontradas
 
-*Qué les costó, dónde se trabaron, qué decidieron y por qué. Esta sección se
-lee y suma. No es relleno: es donde se ve si entendieron el problema.*
+El punto donde más fácil es equivocarse silenciosamente es `avalancha`: si
+se cuentan diferencias sobre la representación hexadecimal (comparando
+caracteres) en vez de sobre los bytes crudos con XOR + `bit_count()`, el
+programa corre sin errores y produce un número que *parece* razonable, pero
+sistemáticamente subestima la distancia real en bits. La única forma de
+confirmar que la implementación es correcta fue el caso trivial de dos
+mensajes idénticos (debe dar exactamente 0) y verificar que, para mensajes
+distintos, el resultado ronda el 50 % en varias corridas con entradas
+distintas, no solo una.
 
----
+El segundo punto de atención fue no romper el contrato de
+`verificar_manifiesto`: es tentador devolver solo las claves que tienen
+contenido y omitir las vacías, pero el código que consume el resultado
+(`_cmd_verificar`, ya resuelto) espera las cuatro claves siempre presentes.
+Correr la prueba obligatoria de un solo byte antes de dar por terminada la
+Parte B fue lo que permitió confirmar que la clasificación `OK` vs.
+`MODIFICADO` funcionaba de punta a punta, no solo en el caso trivial de un
+directorio sin cambios.
 
 ## Distribución del trabajo
 
-*Quién hizo qué. Tiene que ser consistente con el historial de commits.*
-
 | Integrante | Aportes |
 |---|---|
-| Magni, Gastón | |
-| Mosconi, Ignacio | |
-| Presuttari, Matías | |
-| Terreno, Valentino | |
+| Magni, Gastón | [COMPLETAR] |
+| Mosconi, Ignacio | [COMPLETAR] |
+| Presuttari, Matías | [COMPLETAR] |
+| Terreno, Valentino | [COMPLETAR] |
 
 ---
 
 ## Declaración de uso de asistentes de IA
 
-> **Obligatoria.** No está prohibido usar asistentes de IA. Lo que se evalúa es
-> que entiendan lo que entregan. La omisión de esta declaración es **causal de
-> rechazo automático** de la entrega. Una declaración honesta no baja la nota.
-
-**¿El grupo usó asistentes de IA en este trabajo?**  Sí / No
-
-*Si la respuesta es No, firmen igual la sección y pasen al final.*
+**¿El grupo usó asistentes de IA en este trabajo?** Sí
 
 | Herramienta | Para qué se usó | Qué partes del entregable afectó | Cómo se verificó que lo devuelto era correcto |
 |---|---|---|---|
-| | | | |
-| | | | |
+| Claude Code (Anthropic, modelo Claude Sonnet 5) | Implementar los cuatro bloques `TODO` de `src/integridad.py`; investigar y redactar el análisis del incidente SolarWinds/SUNBURST de la Parte A; redactar las respuestas de la Parte B.3. | Los cuatro subcomandos de `integridad.py` (`generar`, `verificar`, `avalancha`, `mac`); las secciones A.1 a A.6; las respuestas B.3.1 a B.3.5. | El código se ejecutó en su totalidad contra los datos de muestra reales (evidencia pegada en B.1, incluida la prueba obligatoria de detección de un byte, que dio el resultado esperado), no solo se leyó. Cada afirmación factual de la Parte A y cada cita técnica de la Parte B.3 se verificó contra la fuente primaria original (páginas de CISA, el blog de FireEye/Mandiant, el paper de Stevens et al. en el Cryptology ePrint Archive, el paper de Wang y Yu en las actas de EUROCRYPT 2005, y la página de CSRC/NIST sobre el retiro de SHA-1) obteniendo el contenido de esas páginas directamente, no confiando en el conocimiento del modelo sin contrastar. |
 
 **Declaración:**
 
-*El grupo declara que comprende el contenido íntegro de lo entregado y que
-puede explicar y defender oralmente cualquier parte del código y del análisis,
-independientemente de la asistencia recibida.*
+El grupo declara que comprende el contenido íntegro de lo entregado y que
+puede explicar y defender oralmente cualquier parte del código y del
+análisis, independientemente de la asistencia recibida. *(Pendiente de
+revisión final por todos los integrantes antes de la entrega: cada
+integrante debe correr el código y leer las fuentes citadas antes de firmar
+esta declaración con su commit.)*
 
 ---
 
 ## Fuentes consultadas (general)
 
-*Todas las fuentes del trabajo, en formato APA. Las de la Parte A pueden
-repetirse acá o referenciarse a la sección A.6.*
+Ver [A.6](#a6--fuentes-consultadas-parte-a) para las fuentes de la Parte A.
+Las fuentes técnicas de la Parte B están citadas en línea dentro de cada
+respuesta de B.3.
 
-1.
-2.
-3.
+1. Cybersecurity and Infrastructure Security Agency. (2020, 17 de diciembre; actualizado 2021, 15 de abril). *Advanced persistent threat compromise of government agencies, critical infrastructure, and private sector organizations* (AA20-352A). https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-352a
+2. Wang, X., y Yu, H. (2005). *How to break MD5 and other hash functions*. En *Advances in Cryptology — EUROCRYPT 2005* (LNCS vol. 3494, pp. 19–35). Springer. https://www.iacr.org/archive/eurocrypt2005/34940019/34940019.pdf
+3. Stevens, M., Bursztein, E., Karpman, P., Albertini, A., y Markov, Y. (2017). *The first collision for full SHA-1*. Cryptology ePrint Archive, Report 2017/190. https://eprint.iacr.org/2017/190.pdf
