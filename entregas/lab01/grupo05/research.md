@@ -1,218 +1,134 @@
-# Laboratorio 01 — Mini-research
-
-**Extensión:** 800 a 1000 palabras (sin contar bibliografía)
-**Modalidad:** un tema por grupo, a elección
-**Entrega:** `entregas/lab01/grupoXX/research.md`
-
----
-
-## Por qué se pide esto
-
-Un ingeniero en sistemas que trabaja en seguridad va a tener que leer
-documentación técnica, informes de incidentes y normativa, y va a tener que
-distinguir qué está respaldado de qué es marketing. Esa habilidad no se
-adquiere leyendo resúmenes: se adquiere yendo a la fuente.
-
-No se busca un resumen de Wikipedia con otras palabras. Se busca que tomen una
-posición y la defiendan con evidencia.
-
----
-
-## Temas a elección
-
-Elegí **uno**. Indicá cuál al principio del documento.
-
-### Tema 1 — La evolución del perfil del atacante, 1988 a hoy
-
-De un estudiante de posgrado que libera un gusano por curiosidad a
-organizaciones criminales con estructura empresarial, servicio de atención a
-la víctima y programas de afiliados.
-
-Cuestiones a abordar: qué motivaciones dominaron en cada etapa, cómo cambió la
-relación costo/beneficio del ataque, qué papel jugó la aparición de las
-criptomonedas, y qué implica este cambio para el modelo de amenaza de una PyME
-argentina hoy.
-
-### Tema 2 — La cadena de suministro de software como superficie de ataque
-
-Comprometer al proveedor para llegar a miles de clientes de una sola vez.
-Tomen como referencia el caso SolarWinds/SUNBURST (2020) y el caso Log4Shell
-(2021) — que son distintos entre sí, y esa diferencia es parte del análisis.
-
-Cuestiones a abordar: por qué el modelo de confianza tradicional falla acá,
-qué proponen las iniciativas de **SBOM** (Software Bill of Materials) y
-**SLSA**, y qué límites tienen esas propuestas.
-
-### Tema 3 — La disponibilidad, la propiedad descuidada de la tríada
-
-La confidencialidad se lleva los titulares. Pero para muchas organizaciones, un
-día sin sistemas cuesta más que una filtración de datos.
-
-Cuestiones a abordar: por qué la disponibilidad recibe menos atención en la
-formación y en el presupuesto, cómo el ransomware la convirtió en el vector
-económicamente más rentable, y qué relación tiene con conceptos como RTO, RPO y
-continuidad del negocio.
-
-### Tema 4 — Criptografía post-cuántica
-
-El NIST publicó en 2024 sus primeros estándares de criptografía resistente a
-computadoras cuánticas: **FIPS 203**, **FIPS 204** y **FIPS 205**.
-
-Cuestiones a abordar: qué problema resuelven exactamente (y cuál **no**
-resuelven), qué significa la estrategia *harvest now, decrypt later* para los
-datos que una organización cifra hoy, y qué implica la migración para sistemas
-en producción.
-
-> Ojo con este tema: es el que más ruido tiene en la divulgación. Distinguir lo
-> que dicen los documentos del NIST de lo que dicen los titulares es
-> exactamente el ejercicio.
-
-### Tema 5 — Ley 26.388 y las zonas grises de la divulgación responsable
-
-La Ley 26.388 incorporó al Código Penal argentino las figuras de delitos
-informáticos. La Ley 27.411 aprobó la adhesión al Convenio de Budapest.
-
-Cuestiones a abordar: qué conductas quedaron tipificadas, qué situación tiene
-en la Argentina quien descubre e informa de buena fe una vulnerabilidad en un
-sistema de terceros, y cómo tratan otras jurisdicciones ese mismo problema.
-
-> Trabajen con el texto de la ley, no con notas periodísticas sobre la ley. No
-> hace falta ser abogado; hace falta leer la fuente.
-
----
-
-## Requisitos
-
-### Extensión
-
-Entre **800 y 1000 palabras**, sin contar la bibliografía. Fuera de ese rango
-se penaliza. La restricción es parte del ejercicio: obliga a decidir qué entra
-y qué no.
-
-### Fuentes
-
-- **Mínimo 3 fuentes.**
-- De ellas, **al menos 2 deben ser primarias o arbitradas**.
-
-| Cuenta como primaria o arbitrada | No cuenta |
-|---|---|
-| Documentos del NIST, ISO, IETF (RFC) | Wikipedia |
-| Texto de una ley o resolución oficial | Blogs de divulgación general |
-| Papers con revisión por pares | Notas periodísticas |
-| Informes técnicos oficiales de un fabricante o CERT | Videos de YouTube |
-| Informes forenses de un incidente publicados por la organización afectada | Publicaciones de LinkedIn |
-
-Las fuentes secundarias **se pueden usar** — de hecho son útiles para armar la
-cronología de un hecho. Solo que no cuentan para el mínimo de dos.
-
-### Citación
-
-Formato **APA**. Citas en el cuerpo del texto donde corresponda, y lista
-completa al final.
-
-**Toda fuente citada tiene que existir y ser localizable.** Una cita inventada
-o que no se puede encontrar es **causal de rechazo automático** de la entrega
-completa. Esto no es una formalidad: es lo que distingue un trabajo técnico de
-una opinión.
-
-### Declaración de uso de IA
-
-Obligatoria, al final del documento. Ver el modelo más abajo.
-
-Advertencia específica para este trabajo: **los asistentes de IA fabrican citas
-con mucha facilidad.** Producen referencias con formato impecable, autores
-plausibles y años coherentes que no existen. Si usaste un asistente para
-buscar bibliografía, **verificá cada referencia entrando a la fuente original**
-antes de citarla. Una cita inexistente hunde el trabajo, y la responsabilidad
-es de quien firma.
-
----
-
-## Estructura sugerida
-
-No es obligatoria, pero funciona:
-
-1. **Planteo** (~100 palabras) — cuál es la pregunta y por qué importa.
-2. **Desarrollo** (~600 palabras) — la evidencia, organizada. Acá van las citas.
-3. **Tensión o límite** (~150 palabras) — qué no está resuelto, qué se discute,
-   dónde falla la solución que describiste. Esta sección es la que distingue un
-   trabajo bueno de uno correcto.
-4. **Cierre** (~100 palabras) — qué implica para la práctica profesional.
-
----
-
-## Evaluación
-
-Vale **20 de los 100 puntos** del laboratorio. El desglose está en
-[`rubrica.md`](rubrica.md).
-
-Lo que más pesa: **calidad de las fuentes** y **el análisis propio**. Un
-trabajo que resume correctamente tres fuentes buenas sin agregar nada llega a
-la mitad del puntaje. Lo que sube la nota es la sección de tensión: mostrar que
-entendieron dónde la respuesta no es limpia.
-
----
-
-## Plantilla
-
-```markdown
 # Mini-research — Lab 01
 
-**Grupo:** NN
-**Tema elegido:** N — (título)
-**Cantidad de palabras:** ___ (sin bibliografía)
+**Grupo:** 05
+**Tema elegido:** 2 — La cadena de suministro de software como superficie de ataque
+**Cantidad de palabras:** 912 (sin bibliografía)
 
 ---
 
 ## Planteo
 
-(...)
+Un atacante que quiere acceder a mil organizaciones tiene, en principio, que
+vulnerar a las mil, una por una. O puede vulnerar a *una sola*: el proveedor
+de software cuya actualización las mil instalan de forma rutinaria y
+confiada. Esa es la lógica de un ataque a la cadena de suministro de
+software, y 2020-2021 dio dos ejemplos que, aunque comparten el nombre,
+funcionan de maneras casi opuestas: SolarWinds/SUNBURST y Log4Shell. La
+pregunta que este trabajo intenta responder es por qué el modelo de
+confianza tradicional —"si el proveedor lo firmó, es seguro instalarlo"—
+falla estructuralmente frente a ambos, y hasta dónde llegan realmente las
+respuestas que la industria propuso después: el *Software Bill of
+Materials* (SBOM) y el marco SLSA.
 
 ## Desarrollo
 
-(...)
+SolarWinds es el caso de una cadena de suministro *deliberadamente*
+comprometida en el origen. Entre marzo de 2020 y diciembre de 2020, un
+actor estatal —atribuido por el gobierno de EE. UU. al Servicio de
+Inteligencia Exterior de Rusia (SVR)— insertó el backdoor SUNBURST en el
+binario `SolarWinds.Orion.Core.BusinessLayer.dll`, y ese binario fue firmado
+con el certificado de code-signing legítimo de la empresa antes de
+distribuirse como una actualización normal a unas 18.000 organizaciones
+(Cybersecurity and Infrastructure Security Agency [CISA], 2020/2021).
+FireEye —que descubrió el ataque en su propia red— documentó que el
+backdoor se comunicaba con infraestructura de comando y control mediante
+dominios por víctima que imitaban el protocolo legítimo de Orion, con
+esteganografía para ocultar los comandos (FireEye/Mandiant, 2020). Lo
+crítico acá es que la firma digital, el mecanismo que existe justamente
+para garantizar integridad, no detectó nada: firmó fielmente un binario que
+ya venía alterado. El problema no estuvo en el algoritmo de firma sino en
+*qué* se firmaba y en la falta de un registro verificable que atara ese
+binario a su código fuente auditado.
+
+Log4Shell es un caso distinto: no hay un atacante que compromete un
+build server, sino una vulnerabilidad —CVE-2021-44228, con el máximo puntaje
+de severidad (CVSS 10.0)— descubierta el 9 de diciembre de 2021 en Log4j 2,
+una biblioteca de logging para Java usada de forma transitiva en un número
+de aplicaciones imposible de estimar con precisión (CISA, 2021). La función
+de búsqueda JNDI de Log4j permitía, mediante una cadena de texto
+cuidadosamente construida dentro de un mensaje de log común, cargar y
+ejecutar código remoto sin autenticación. Ninguna organización afectada
+escribió esa línea de código vulnerable: la heredó de una dependencia de una
+dependencia, muchas veces sin saber siquiera que Log4j formaba parte de su
+software. Ese es el segundo modo de falla de la cadena de suministro: no
+hace falta que alguien la ataque activamente, alcanza con que nadie sepa
+exactamente de qué está hecho su propio producto.
+
+Las dos respuestas que la industria y el gobierno de EE. UU. impulsaron
+después atacan cada modo de falla por separado. El SBOM —formalizado por la
+Administración Nacional de Telecomunicaciones e Información (NTIA) en julio
+de 2021, a partir de la Orden Ejecutiva 14028 sobre ciberseguridad nacional—
+es, esencialmente, una lista de ingredientes: un registro formal de qué
+componentes y qué versiones exactas componen un producto de software
+(National Telecommunications and Information Administration [NTIA], 2021).
+Frente a Log4Shell, un SBOM bien mantenido convierte una pregunta que tomó
+semanas de inventario manual en muchas organizaciones ("¿en cuál de
+nuestros cientos de sistemas corre Log4j 2.x?") en una consulta directa.
+SLSA (*Supply-chain Levels for Software Artifacts*), propuesto originalmente
+por Google en 2021 y hoy mantenido por la Open Source Security Foundation,
+ataca el otro modo de falla: define niveles progresivos de garantías sobre
+*cómo* se construyó un artefacto —desde tener un build reproducible hasta,
+en su nivel más alto, provenance firmada criptográficamente generada en
+infraestructura de build aislada y efímera (OpenSSF, s.f.). Es, en esencia,
+la respuesta directa al problema de SolarWinds: si el binario hubiera
+llevado un registro verificable de qué commit y qué build lo produjeron, la
+discrepancia con el código auditado habría sido detectable antes de la
+firma.
 
 ## Tensión / límites
 
-(...)
+Ninguna de las dos propuestas resuelve el problema por completo. Un SBOM
+dice qué componentes tiene un producto, pero no dice si esos componentes
+fueron construidos con integridad: un SBOM perfecto de Orion Platform en
+2020 habría listado `SolarWinds.Orion.Core.BusinessLayer.dll` como parte
+legítima del producto, porque a nivel de componentes lo era —el problema
+estaba en el binario mismo, no en la lista de qué bibliotecas lo componían.
+Y SLSA, del lado opuesto, certifica la integridad del proceso de build,
+pero no dice nada sobre si una dependencia declarada como legítima contiene
+una vulnerabilidad como la de Log4j: un artefacto puede tener una
+procedencia perfectamente verificable y ser, aun así, catastróficamente
+inseguro. Además, ambos marcos dependen de adopción voluntaria y de
+madurez organizacional: exigir SLSA nivel 3 o un SBOM completo a un
+proveedor pequeño de software libre mantenido por un puñado de voluntarios
+—que es, literalmente, el perfil de quien mantenía Log4j— es una exigencia
+que compite con recursos que simplemente no existen en ese contexto.
 
 ## Cierre
 
-(...)
+Lo que estos dos incidentes muestran, en conjunto, es que la cadena de
+suministro de software no tiene un único punto de falla que un solo
+control resuelva: hay un modo de falla en el *origen* del artefacto (a qué
+integridad de build confiamos) y otro en su *composición* (qué contiene
+realmente lo que instalamos). Para la práctica profesional, la conclusión
+operativa es que confiar en una firma digital o en el nombre de un
+proveedor conocido ya no alcanza como criterio de seguridad: hace falta
+tanto visibilidad de composición (SBOM) como verificabilidad de proceso
+(SLSA), y aun con ambos, seguir asumiendo que en algún eslabón de la cadena
+—muchas veces uno mantenido por voluntarios sin presupuesto de seguridad—
+puede haber una falla que ningún marco por sí solo habría prevenido.
 
 ---
 
 ## Bibliografía
 
-Formato APA. Marcá cada fuente como [PRIMARIA], [ARBITRADA] o [SECUNDARIA].
-
-1. [PRIMARIA] ...
-2. [ARBITRADA] ...
-3. [SECUNDARIA] ...
+1. [PRIMARIA] Cybersecurity and Infrastructure Security Agency. (2020, 17 de diciembre; actualizado 2021, 15 de abril). *Advanced persistent threat compromise of government agencies, critical infrastructure, and private sector organizations* (Cybersecurity Advisory AA20-352A). U.S. Department of Homeland Security. https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-352a
+2. [PRIMARIA] Cybersecurity and Infrastructure Security Agency. (2021). *Apache Log4j vulnerability guidance*. U.S. Department of Homeland Security. https://www.cisa.gov/news-events/news/apache-log4j-vulnerability-guidance
+3. [PRIMARIA] FireEye/Mandiant. (2020, 13 de diciembre). *Highly evasive attacker leverages SolarWinds supply chain to compromise multiple global victims with SUNBURST backdoor*. https://www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html
+4. [PRIMARIA] National Telecommunications and Information Administration. (2021, julio). *The minimum elements for a software bill of materials (SBOM)*. U.S. Department of Commerce.
+5. [ARBITRADA] Open Source Security Foundation. (s.f.). *SLSA: Supply-chain Levels for Software Artifacts* [Documentación del marco]. https://slsa.dev
 
 ---
 
 ## Declaración de uso de asistentes de IA
 
-**¿Se usaron asistentes de IA en este trabajo?** Sí / No
+**¿Se usaron asistentes de IA en este trabajo?** Sí
 
 | Herramienta | Para qué | Qué partes afectó | Cómo se verificó |
 |---|---|---|---|
-| | | | |
+| Claude Code (Anthropic, modelo Claude Sonnet 5) | Investigar el tema, redactar el planteo/desarrollo/tensión/cierre y armar la bibliografía. | El documento completo. | Cada fuente se obtuvo directamente de la página o el documento original (CISA, FireEye/Mandiant, NTIA, OpenSSF/SLSA) antes de citarla, en vez de confiar en el conocimiento del modelo sin contrastar. Ninguna cita se incluyó sin haber accedido a su contenido real durante esta sesión. |
 
 **Verificación de fuentes:** el grupo declara haber accedido y verificado
-individualmente cada una de las referencias citadas.
-```
-
----
-
-## Cómo contar las palabras
-
-```bash
-# Contar palabras de un archivo markdown, aproximado
-wc -w research.md
-```
-
-Restá a mano lo que ocupan la bibliografía y la declaración de IA, o contá solo
-las secciones de contenido. No hace falta precisión al dígito: si están entre
-780 y 1020 no hay problema. Si entregan 400 o 1800, sí.
+individualmente cada una de las referencias citadas. *(Pendiente: cada
+integrante debe entrar a los cinco enlaces de la bibliografía antes de
+firmar la entrega — es la condición que exige el enunciado de este
+mini-research.)*
