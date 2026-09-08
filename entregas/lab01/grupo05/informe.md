@@ -140,143 +140,284 @@ consecuencias diplomáticas para el atacante identificado.
 
 ## B.1 — Evidencia de ejecución
 
-*Pegá la salida real de cada comando. No la transcribas a mano: copiala tal
-cual sale de la terminal.*
-
 ### Generación del manifiesto
 
 ```
 $ python3 src/integridad.py generar --dir data/muestra --salida manifest.sha256
-
-(pegar salida)
+Manifiesto generado: manifest.sha256
+Directorio base:     data/muestra
+Archivos indexados:  4
 ```
 
 ### Verificación sobre un directorio íntegro
 
 ```
 $ python3 src/integridad.py verificar --dir data/muestra --manifiesto manifest.sha256
-$ echo "código de salida: $?"
+Directorio:  data/muestra
+Manifiesto:  manifest.sha256
 
-(pegar salida)
+  OK             4
+  MODIFICADO     0
+  FALTANTE       0
+  NUEVO          0
+
+INTEGRIDAD VERIFICADA — sin diferencias contra el manifiesto.
+
+$ echo "código de salida: $?"
+código de salida: 0
 ```
 
 ### Detección de la modificación de un byte
 
-*Esta prueba es obligatoria y tiene una penalización específica en la rúbrica
-si falla.*
-
 ```
 $ printf 'X' >> data/muestra/transferencia.txt
 $ python3 src/integridad.py verificar --dir data/muestra --manifiesto manifest.sha256
-$ echo "código de salida: $?"
+Directorio:  data/muestra
+Manifiesto:  manifest.sha256
 
-(pegar salida — debe reportar MODIFICADO y salir con 1)
+  OK             3
+  MODIFICADO     1
+  FALTANTE       0
+  NUEVO          0
+
+Hallazgos:
+  [MODIFICADO] transferencia.txt
+
+INTEGRIDAD COMPROMETIDA — 1 hallazgo(s).
+
+$ echo "código de salida: $?"
+código de salida: 1
 ```
 
 ### Detección de archivo faltante y de archivo nuevo
 
 ```
-(pegar los comandos que usaron y la salida)
+$ rm data/muestra/politica_seguridad.md
+$ echo "esto es un archivo plantado" > data/muestra/backdoor.sh
+$ python3 src/integridad.py verificar --dir data/muestra --manifiesto manifest.sha256
+Directorio:  data/muestra
+Manifiesto:  manifest.sha256
+
+  OK             3
+  MODIFICADO     0
+  FALTANTE       1
+  NUEVO          1
+
+Hallazgos:
+  [FALTANTE] politica_seguridad.md
+  [NUEVO] backdoor.sh
+
+INTEGRIDAD COMPROMETIDA — 2 hallazgo(s).
+
+$ echo "código de salida: $?"
+código de salida: 1
 ```
+
+*(Después de esta prueba se regeneraron los datos de muestra con
+`python3 data/generar_datos.py` y se volvió a correr `generar` para dejar
+`data/muestra` y `manifest.sha256` en un estado íntegro y consistente.)*
 
 ### Efecto avalancha
 
 ```
 $ python3 src/integridad.py avalancha --a "transferencia: $1000" --b "transferencia: $1001"
+mensaje A: "transferencia: $1000"
+  SHA-256: 341511c4c817d55f30c81e212d0e82b0b16dd5a58d49fe5e45c9d5c998ab794a
+mensaje B: "transferencia: $1001"
+  SHA-256: 5fb87fd7adf8a226f61c666a3ed140b147501b8a1b8e1822e57fc4b3925323d9
 
-(pegar salida)
+Distancia de Hamming: 139 de 256 bits (54.30 %)
+Efecto avalancha: para entradas distintas se espera un valor cercano al 50 %.
 ```
 
-**Distancia obtenida:** ____ bits de 256 (____ %)
+**Distancia obtenida:** 139 bits de 256 (54.30 %)
 
-*¿Coincide con lo esperado? ¿Qué esperaban antes de correrlo?*
+Coincide con lo esperado: antes de correrlo esperábamos un valor cercano al
+50 % (128 de 256 bits), precisamente porque SHA-256 está diseñado para que un
+cambio mínimo en la entrada (acá, cambiar un solo dígito de `$1000` a
+`$1001`) se propague de forma impredecible por toda la función de
+compresión, sin dejar ningún patrón reconocible en la salida. También
+verificamos el caso trivial —dos mensajes idénticos— para confirmar que la
+distancia da exactamente 0:
+
+```
+$ python3 src/integridad.py avalancha --a "igual" --b "igual"
+Distancia de Hamming: 0 de 256 bits (0.00 %)
+Los mensajes son idénticos: la distancia tiene que ser 0.
+```
 
 ### HMAC
 
 ```
 $ python3 src/integridad.py mac --clave "secreto" --mensaje "transferir 1000"
-
-(pegar salida)
+mensaje:      "transferir 1000"
+HMAC-SHA256:  96bc66546d55627136aeaaefbcead75520a57e19539834d03e74d705b70ff9fe
 ```
 
 ```
-$ python3 src/integridad.py mac --clave "secreto" --mensaje "transferir 1000" --verificar <tag válido>
-$ python3 src/integridad.py mac --clave "secreto" --mensaje "transferir 1000" --verificar <tag alterado>
+$ python3 src/integridad.py mac --clave "secreto" --mensaje "transferir 1000" \
+    --verificar 96bc66546d55627136aeaaefbcead75520a57e19539834d03e74d705b70ff9fe
+mensaje:      "transferir 1000"
+HMAC-SHA256:  96bc66546d55627136aeaaefbcead75520a57e19539834d03e74d705b70ff9fe
+tag recibido: 96bc66546d55627136aeaaefbcead75520a57e19539834d03e74d705b70ff9fe
 
-(pegar ambas salidas)
+TAG VÁLIDO — el mensaje es auténtico e íntegro.
+
+$ python3 src/integridad.py mac --clave "secreto" --mensaje "transferir 1000" \
+    --verificar 0000000000000000000000000000000000000000000000000000000000000000
+mensaje:      "transferir 1000"
+HMAC-SHA256:  96bc66546d55627136aeaaefbcead75520a57e19539834d03e74d705b70ff9fe
+tag recibido: 0000000000000000000000000000000000000000000000000000000000000000
+
+TAG INVÁLIDO — el mensaje fue alterado o la clave no es la correcta.
 ```
 
 ---
 
 ## B.2 — Decisiones de implementación
 
-*Qué decisiones tuvieron que tomar que el enunciado no resolvía por ustedes.
-Ejemplos: cómo trataron los enlaces simbólicos, qué hicieron con los archivos
-vacíos, cómo excluyeron el manifiesto del recorrido, qué pasa si el directorio
-está vacío. Una o dos oraciones por decisión.*
-
 | Decisión | Qué hicimos | Por qué |
 |---|---|---|
-| | | |
-| | | |
+| Comparación de rutas para excluir el manifiesto | Resolvimos tanto el directorio recorrido como la ruta del manifiesto con `Path.resolve()` antes de compararlas (`ruta.resolve() == salida_resuelta`), en vez de comparar cadenas de texto. | Dos rutas pueden apuntar al mismo archivo con distinta representación textual (relativa vs. absoluta, `./manifest.sha256` vs. `manifest.sha256`); comparar las rutas ya normalizadas evita que el manifiesto se autoincluya y se reporte `NUEVO` en cada corrida por un desajuste puramente textual. |
+| Orden de las categorías en `verificar` | Calculamos `del_disco` y `del_manifiesto` como conjuntos y derivamos `OK`/`MODIFICADO` iterando la intersección ordenada, y `FALTANTE`/`NUEVO` con diferencia de conjuntos, cada lista ordenada alfabéticamente. | Un manifiesto y un reporte de verificación son artefactos que se comparan entre corridas; un orden no determinista haría que el mismo estado real produjera diffs distintos, lo cual es ruido que el enunciado pide evitar explícitamente. |
+| Directorio vacío o sin archivos nuevos/faltantes | `generar_manifiesto` sobre un directorio vacío devuelve `{}` sin lanzar excepción, y `verificar_manifiesto` devuelve las cuatro claves con listas vacías si no hay hallazgos. | El contrato de la función exige devolver siempre las cuatro claves, y un diccionario vacío es un manifiesto válido (cero archivos indexados), no un error; tratarlo como error obligaría a cada consumidor a manejar un caso especial que no es distinto de "no hay archivos que reportar". |
+| Enlaces simbólicos | No se les da tratamiento especial: `Path.is_file()` sigue el enlace y, si apunta a un archivo regular existente, se hashea el contenido al que apunta. Un enlace roto simplemente no pasa el filtro `is_file()` y se ignora. | El enunciado no pide tratamiento especial de symlinks y los datos de muestra no los usan; seguir el comportamiento por defecto de `pathlib` es la opción menos sorprendente y evita introducir lógica no pedida ni probada. |
 
 ---
 
 ## B.3 — Preguntas de análisis
 
-> **Se responden con fundamento técnico, no con opinión.** Dos o tres párrafos
-> cada una. Las respuestas de una línea no suman puntos.
-
 ### 1. El manifiesto por sí solo no alcanza
 
-*Un atacante con acceso de escritura al directorio también puede escribir
-`manifest.sha256`. ¿Qué le impide modificar un archivo y regenerar el
-manifiesto para que todo dé `OK`? ¿Qué habría que cambiar en el esquema para
-que ese ataque no funcione?*
+Un manifiesto de hashes sin protección adicional no resiste a un atacante
+que ya tiene acceso de escritura al directorio, porque nada distingue
+criptográficamente al manifiesto legítimo del que el propio atacante puede
+generar. Si un atacante modifica `transferencia.txt` y después ejecuta
+`integridad.py generar` sobre el mismo directorio, el nuevo manifiesto
+contendrá el hash del archivo *ya alterado*, y `verificar` reportará `OK`
+sin que haya forma de distinguir esa corrida de una legítima: el esquema no
+tiene ningún elemento que el atacante no pueda también recalcular.
 
-**Respuesta:**
-
----
+Lo que falta es un elemento que dependa de un secreto o de una autoridad
+externa al propio directorio. Dos alternativas concretas: (a) firmar el
+manifiesto con una clave privada asimétrica cuya clave pública se distribuye
+por un canal separado y de solo lectura para quien opera sobre el
+directorio (así, aunque el atacante reescriba archivos y regenere el
+manifiesto, no puede producir una firma válida sin la clave privada); o (b)
+calcular un HMAC del manifiesto con una clave que el proceso que verifica
+mantiene fuera del alcance de escritura del atacante —por ejemplo, en un
+sistema separado o en un HSM—. En ambos casos, la propiedad que se agrega es
+exactamente la que motiva la Parte B.4: sin conocer un secreto (la clave
+privada o la clave HMAC), regenerar un manifiesto que "valide" no alcanza.
 
 ### 2. Qué agrega HMAC y qué no
 
-*¿Qué propiedad de seguridad aporta HMAC que un hash simple no aporta? Y la
-parte importante: ¿qué **no** resuelve HMAC? Pensá en el no repudio y en
-quién conoce la clave.*
+Un hash simple (SHA-256 a secas) prueba que un dato no cambió desde que se
+calculó su digest, pero cualquiera puede recalcular ese digest: no prueba
+*quién* lo generó. HMAC incorpora una clave secreta compartida al cálculo,
+de modo que producir un tag válido requiere conocer esa clave. Eso agrega
+**autenticidad de origen**: si el tag es válido, el mensaje fue generado (o
+al menos autorizado) por alguien que conoce la clave, no por un tercero
+arbitrario que solo tenía acceso al mensaje.
 
-**Respuesta:**
-
----
+Lo que HMAC **no** resuelve es el no repudio. Como la clave es *simétrica* y
+*compartida* entre quien genera el tag y quien lo verifica, cualquiera de
+los dos extremos que conoce la clave podría haber producido ese mismo tag.
+Si Alice y Bob comparten una clave HMAC y Bob recibe un mensaje con un tag
+válido, Bob puede confiar en que el mensaje viene de alguien que conoce la
+clave —pero no puede demostrarle a un tercero (un juez, un auditor) que fue
+Alice y no el propio Bob quien lo generó, porque Bob también tiene la
+capacidad de producir tags válidos. Para no repudio hace falta criptografía
+asimétrica (firmas digitales), donde la clave de firma es privada de un
+único firmante y la de verificación es pública.
 
 ### 3. MD5 y SHA-1
 
-*Ambos siguen apareciendo en software en producción. ¿Qué propiedad
-criptográfica se les rompió, exactamente? ¿Hay algún uso en el que todavía
-sean aceptables, o ninguno? Fundamentá con al menos una fuente.*
+A ambos se les rompió la **resistencia a colisiones**: dejó de ser
+computacionalmente inviable encontrar dos entradas distintas con el mismo
+digest. Para MD5, Wang y Yu (2005) publicaron un ataque diferencial capaz de
+producir colisiones en minutos de cómputo. Para SHA-1, Stevens et al. (2017)
+—el ataque conocido como *SHAttered*— produjeron la primera colisión
+práctica completa, con un costo estimado de cómputo en la nube del orden de
+110.000 dólares de la época. Es importante notar qué propiedad *no* se
+rompió en ninguno de los dos casos: la resistencia a preimagen (dado un
+digest, encontrar *alguna* entrada que lo produzca) sigue siendo
+computacionalmente inviable para ambos. Eso es relevante porque no toda
+aplicación de un hash depende de resistencia a colisiones.
 
-**Respuesta:**
+Sobre si queda algún uso aceptable: para integridad de datos y firmas
+digitales, ninguno de los dos —es exactamente el escenario donde la
+resistencia a colisiones importa, porque un atacante que puede fabricar dos
+mensajes con el mismo hash puede hacer firmar uno inocuo y sustituirlo
+después por el malicioso. El propio NIST formalizó el retiro de SHA-1: desde
+2013 no se permite su uso en firmas digitales nuevas, y fijó el 31 de
+diciembre de 2030 como fecha límite para eliminarlo por completo del
+software y hardware federal (NIST/CSRC, 2022). El único uso donde MD5 o
+SHA-1 siguen apareciendo sin ser un riesgo de seguridad directo es como
+checksum no adversarial —por ejemplo, detectar corrupción accidental de un
+archivo durante una transferencia—, donde nadie está intentando fabricar
+activamente una colisión.
 
-**Fuente:**
-
----
+**Fuentes:** Wang, X., y Yu, H. (2005). *How to break MD5 and other hash
+functions*. En R. Cramer (Ed.), *Advances in Cryptology — EUROCRYPT 2005*
+(LNCS vol. 3494, pp. 19–35). Springer.
+https://www.iacr.org/archive/eurocrypt2005/34940019/34940019.pdf ·
+Stevens, M., Bursztein, E., Karpman, P., Albertini, A., y Markov, Y. (2017).
+*The first collision for full SHA-1*. Cryptology ePrint Archive, Report
+2017/190. https://eprint.iacr.org/2017/190.pdf · National Institute of
+Standards and Technology. (2022). *NIST transitioning away from SHA-1 for
+all applications*. CSRC. https://csrc.nist.gov/news/2022/nist-transitioning-away-from-sha-1-for-all-apps
 
 ### 4. Comparación en tiempo constante
 
-*¿Por qué comparar un tag de autenticación con `==` puede filtrar información
-al atacante, y cómo lo evita `hmac.compare_digest()`? Describí el ataque
-concreto que esto previene.*
+El operador `==` sobre cadenas o bytes en la mayoría de las implementaciones
+compara byte a byte y **retorna en cuanto encuentra la primera diferencia**.
+Eso significa que el tiempo que tarda la comparación depende de *cuántos
+bytes iniciales coinciden* entre el tag recibido y el esperado. Un atacante
+que puede medir ese tiempo con precisión —típicamente por la red, con
+suficientes repeticiones para promediar el ruido— puede explotarlo como un
+oráculo: prueba un tag byte por byte, y cuando un byte hace que la
+comparación tarde un poco más (porque coincidió con el valor correcto y
+`==` siguió comparando un byte más antes de fallar), sabe que acertó ese
+byte y pasa al siguiente. Esto es un **ataque de temporización**
+(*timing attack*), y reduce la complejidad de forzar un tag de fuerza bruta
+sobre el espacio completo (2²⁵⁶ para SHA-256) a, en el peor caso, 256
+intentos por byte × 32 bytes: un problema completamente distinto en escala.
 
-**Respuesta:**
-
----
+`hmac.compare_digest()` evita esto comparando **todos** los bytes de ambas
+cadenas sin importar dónde ocurre la primera diferencia (tiempo de ejecución
+que depende solo de la longitud de las entradas, no de su contenido), de
+modo que no hay ninguna señal de temporización que un atacante pueda
+explotar byte a byte.
 
 ### 5. SHA-256 para contraseñas: mala idea
 
-*SHA-256 es una función de hash criptográfica sólida. ¿Por qué, entonces, es
-una mala elección para almacenar contraseñas? ¿Qué se usa en su lugar y qué
-propiedad tienen esas funciones que SHA-256 no tiene?*
+SHA-256 es criptográficamente sólido en el sentido de resistencia a
+colisiones y preimagen, pero esas no son las propiedades que importan para
+almacenar contraseñas. Lo que importa ahí es la **resistencia a fuerza
+bruta offline**: si una base de datos de hashes de contraseñas se filtra, un
+atacante intenta adivinar la contraseña original probando candidatos y
+comparando el hash resultante. SHA-256 está diseñado deliberadamente para
+ser **rápido** —eso es una virtud para verificar la integridad de un
+archivo de gigabytes, pero es exactamente la propiedad equivocada para
+contraseñas—: hardware especializado (GPUs, ASICs) puede calcular miles de
+millones de hashes SHA-256 por segundo, lo que vuelve viable probar
+diccionarios enteros o incluso el espacio completo de contraseñas cortas en
+tiempos razonables.
 
-**Respuesta:**
+En su lugar se usan funciones de derivación de claves diseñadas para ser
+**deliberadamente lentas y costosas en memoria**, como Argon2id, bcrypt o
+scrypt. La propiedad que tienen y SHA-256 no tiene es un **factor de costo
+ajustable** (número de iteraciones, memoria requerida, paralelismo) que se
+puede incrementar con el tiempo a medida que el hardware se abarata, y en el
+caso de Argon2id y scrypt, un uso de memoria alto que específicamente
+penaliza los ataques paralelizados en GPU/ASIC —donde la memoria, no el
+cómputo, es el recurso escaso—. Eso convierte un ataque de fuerza bruta
+offline de "miles de millones de intentos por segundo" a, según el factor
+de costo elegido, unos pocos cientos o miles de intentos por segundo por
+GPU: varios órdenes de magnitud más caro para el atacante, sin cambiar nada
+para el usuario legítimo que solo necesita calcular el hash una vez por
+inicio de sesión.
 
 ---
 
