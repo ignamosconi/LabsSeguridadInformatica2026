@@ -7,7 +7,7 @@
 | **Grupo** | 05 |
 | **Caso asignado (Parte A)** | SolarWinds / SUNBURST (2020) — asignado por `5 mod 6 = 5` sobre la tabla del enunciado |
 | **Tema del mini-research** | Tema 2 — La cadena de suministro de software como superficie de ataque |
-| **Fecha de entrega** | [COMPLETAR] |
+| **Fecha de entrega** | 2026-09-07 |
 
 ### Integrantes
 
@@ -448,10 +448,10 @@ directorio sin cambios.
 
 | Integrante | Aportes |
 |---|---|
-| Magni, Gastón | [COMPLETAR] |
-| Mosconi, Ignacio | [COMPLETAR] |
-| Presuttari, Matías | [COMPLETAR] |
-| Terreno, Valentino | [COMPLETAR] |
+| Magni, Gastón | Copió el esqueleto del laboratorio a `entregas/lab01/grupo05/`; implementó `distancia_hamming_bits` (TODO 3/4, subcomando `avalancha`); redactó la sección de Cierre (dificultades encontradas y declaración de uso de IA). |
+| Mosconi, Ignacio | Agregó `INTEGRANTES.md`; implementó `calcular_mac` con HMAC-SHA256 (TODO 4/4, subcomando `mac`); redactó el mini-research completo (Tema 2 — cadena de suministro de software). |
+| Presuttari, Matías | Implementó `generar_manifiesto` (TODO 1/4, subcomando `generar`); redactó la Identificación y la Parte A completa del informe (análisis del incidente SolarWinds/SUNBURST bajo la lente CIA). |
+| Terreno, Valentino | Implementó `verificar_manifiesto` (TODO 2/4, subcomando `verificar`); redactó la Parte B del informe (evidencia de ejecución de todos los subcomandos y las cinco preguntas de análisis). |
 
 ---
 
