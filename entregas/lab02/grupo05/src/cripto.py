@@ -39,7 +39,7 @@ def romper_xor_1byte(cifrado: bytes) -> tuple[int, bytes]:
     Esto demuestra por qué un cifrado clásico de clave corta NO protege nada.
     """
     #En esta función vamos a probar el binario cifrado contra cada una de sus 
-    #posibles claves (son 256 bits posibles). Cuando descifremos un texto con 
+    #posibles claves (son 256 valores posibles). Cuando descifremos un texto con 
     #la clave que estamos probando, la única forma que tenemos de asegurarnos 
     #si el texto es en español / inglés o es basura aleatoria es a través de
     #un análisis de frecuencia.
@@ -87,46 +87,45 @@ def romper_xor_1byte(cifrado: bytes) -> tuple[int, bytes]:
 
 
 # ---------------------------------------------------------------------------
-# B.2 — MAC ingenuo vs HMAC. TODO
+# B.2 — MAC ingenuo vs HMAC.
 # ---------------------------------------------------------------------------
 def mac_ingenuo(clave: bytes, msg: bytes) -> str:
-    """Devuelve sha256(clave || msg) en hex. Es lo que MUCHA gente hace...
+    """
+    Devuelve sha256(clave || msg) en hex. Es lo que MUCHA gente hace...
     y es vulnerable a length-extension. Lo implementás para después romperlo
-    conceptualmente en el informe."""
-    # TODO: implementá esto (una línea).
-    raise NotImplementedError("Completá mac_ingenuo()")
-
+    conceptualmente en el informe.
+    """
+    return hashlib.sha256(clave + msg).hexdigest()
+ 
 def mac_hmac(clave: bytes, msg: bytes) -> str:
-    """Devuelve el HMAC-SHA256 en hex. Esta es la forma CORRECTA."""
-    # TODO: implementá esto usando el módulo hmac.
-    raise NotImplementedError("Completá mac_hmac()")
-
+    #Devuelve el HMAC-SHA256 en hex. Esta es la forma CORRECTA.
+    return hmac.new(clave, msg, hashlib.sha256).hexdigest()
+ 
 def verificar_mac(esperado: str, recibido: str) -> bool:
-    """Compara dos MAC en hex. DEBE ser en tiempo constante para no filtrar
+    """
+    Compara dos MAC en hex. DEBE ser en tiempo constante para no filtrar
     información por el tiempo de comparación.
-    Pista: hmac.compare_digest."""
-    # TODO: implementá esto.
-    raise NotImplementedError("Completá verificar_mac()")
-
-
+    Pista: hmac.compare_digest.
+    """
+    return hmac.compare_digest(esperado, recibido)
+ 
+ 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Herramientas de cripto (Lab 02).")
     sub = ap.add_subparsers(dest="cmd", required=True)
-
+ 
     p = sub.add_parser("xor", help="cifrar/descifrar por XOR (hex de salida)")
     p.add_argument("--texto", required=True)
     p.add_argument("--clave", required=True)
-
+ 
     p = sub.add_parser("romper", help="romper un cifrado XOR de 1 byte (hex de entrada)")
     p.add_argument("--hex", required=True, help="cifrado en hexadecimal")
-
+ 
     p = sub.add_parser("mac", help="calcular MAC de un mensaje")
     p.add_argument("--clave", required=True)
     p.add_argument("--msg", required=True)
     p.add_argument("--modo", choices=["ingenuo", "hmac"], default="hmac")
-
-
-    #COMANDOS CON LOS QUE PUEDE EJECUTARSE DESDE CMD EL ARCHIVO cripto.py
+ 
     a = ap.parse_args()
     if a.cmd == "xor":
         print(xor_cifrar(a.texto.encode(), a.clave.encode()).hex())
@@ -139,7 +138,7 @@ def main() -> int:
         fn = mac_ingenuo if a.modo == "ingenuo" else mac_hmac
         print(fn(a.clave.encode(), a.msg.encode()))
     return 0
-
-
+ 
+ 
 if __name__ == "__main__":
     sys.exit(main())
