@@ -46,3 +46,13 @@ En el escenario del laboratorio, recitar las cinco funciones no decide nada. Dec
 3. [PRIMARIA] Pascoe, C., Quinn, S. y Scarfone, K. (2024, 26 de febrero). *The NIST Cybersecurity Framework (CSF) 2.0* (NIST CSWP 29). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.CSWP.29
 
 Las tres fuentes se abrieron en el documento original (el texto actualizado de la ley en Infoleg, y los PDF de NIST CSWP 04162018 y NIST CSWP 29) antes de citarlas. No se usó un resumen de terceros como fuente.
+
+## Declaración de uso de asistentes de IA
+
+**¿Se usaron asistentes de IA en este trabajo?** Sí.
+
+| Herramienta | Para qué | Qué partes afectó | Cómo se verificó |
+|---|---|---|---|
+| Cursor (asistente de código) | Investigar el tema, redactar el planteo, el desarrollo, la tensión y el cierre, y armar la bibliografía. | El documento completo. | Cada fuente se abrió en el original: Infoleg para la Ley 25.326, y los PDF de NIST CSWP 04162018 y NIST CSWP 29 para las funciones, los Perfiles, los Tiers y la frase de que las funciones se trabajan al mismo tiempo. Ninguna cita se dejó sin haber leído esa página. El conteo de 994 palabras se hizo sobre el cuerpo, sin bibliografía ni esta declaración. |
+
+**Verificación de fuentes:** el grupo declara haber accedido y verificado cada una de las referencias citadas.

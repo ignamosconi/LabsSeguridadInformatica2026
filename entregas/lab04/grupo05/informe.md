@@ -5,6 +5,16 @@
 
 **Alcance del perfil.** El escenario no da cantidad de clientes ni de empleados. Para que los dólares de la Parte B tengan denominador, asumimos una PyME argentina con personal remoto, una aplicación web pública, una oficina, y del orden de unos miles de registros de clientes (nombre, DNI y, hoy, PAN almacenado). Es un supuesto de alcance del Perfil organizacional, no un dato del enunciado. Moneda: dólares estadounidenses de septiembre de 2026, para que el ranking no dependa del tipo de cambio.
 
+## 0. Declaración de uso de IA
+
+**¿El grupo usó asistentes de IA?** Sí.
+
+| Herramienta | Para qué | Qué partes afectó | Cómo se verificó |
+|---|---|---|---|
+| Cursor (asistente de código) | Redactar el informe y el mini-research, implementar `ale`, `roi_control` y `priorizar`, y contrastar identificadores del marco contra las fuentes. | Toda la entrega: `src/riesgo.py`, `riesgos.json`, `informe.md` y `research.md`. | Las fórmulas se corrieron contra los ejemplos del enunciado (`20000.00` y `0.875`). Las subcategorías se leyeron en el PDF de NIST CSWP 29, no de memoria. Las cinco funciones concurrentes y las cuatro respuestas al riesgo se leyeron en NIST CSWP 04162018. Los artículos 2 y 9 de la Ley 25.326 se leyeron en el texto actualizado de Infoleg. Los ALE y los ROI del informe son la salida del script, no un número pegado a mano. |
+
+Una declaración honesta no reemplaza entender la entrega. El grupo responde por las decisiones: CSF 2.0 y no ISO 27001, evitar el PAN en vez de cifrarlo y seguir guardándolo, no poner el ALE posterior del backup en cero, y no tratar el seguro del disco como si reemplazara la única copia.
+
 ## 1. Parte A — Marco aplicado
 
 ### A.1 — Qué marco, y por qué este
@@ -190,3 +200,22 @@ Ley 25.326. (2000). *Protección de los datos personales*. Honorable Congreso de
 National Institute of Standards and Technology. (2018, 16 de abril). *Framework for improving critical infrastructure cybersecurity, version 1.1* (NIST CSWP 04162018). https://doi.org/10.6028/NIST.CSWP.04162018
 
 Pascoe, C., Quinn, S. y Scarfone, K. (2024, 26 de febrero). *The NIST Cybersecurity Framework (CSF) 2.0* (NIST CSWP 29). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.CSWP.29
+
+## Dificultades
+
+Lo que más costó no fue la multiplicación. Fue no citar un Core viejo para que la fila “caiga” en la función que el enunciado nombra. ID.IM-04 —el plan se establece— está en Identify. RS.MA-01 supone que el plan ya existe y se ejecuta. Inventar `RS.RP-1` de la versión 1.1 habría sido prolijo y falso. Lo dejamos escrito así.
+
+La otra trampa fue el ALE posterior del backup. Si lo poníamos en cero, el ROI mentía: la copia inmutable no frena la exfiltración. Bajar solo la parte de destrucción (55.000 a 8.000) y dejar los 30.000 de respuesta y aviso es menos lucido y es lo que el control realmente hace.
+
+El ARO sigue siendo un supuesto. Si la filtración de PAN supera 0,2125 eventos por año, el ranking se da vuelta. Preferimos mostrarlo a defender el orden 1 como si fuera un hecho.
+
+## Distribución del trabajo
+
+Cada integrante es autor de al menos un commit. El resto figura como coautor en todos, porque las decisiones (qué marco, qué respuesta, qué ARO) se discutieron sobre el mismo borrador.
+
+| Integrante | Autor de |
+|---|---|
+| Magni, Gastón (@nosungam) | Copia del esqueleto, `priorizar`, mini-research |
+| Mosconi, Ignacio (@ignamosconi) | `INTEGRANTES.md`, `riesgos.json`, esta declaración y el cierre |
+| Presuttari, Matías (@matiaspresuttari) | `ale`, Parte A del informe |
+| Terreno, Valentino (@vterreno) | `roi_control`, el error de costo cero, Parte B del informe |
