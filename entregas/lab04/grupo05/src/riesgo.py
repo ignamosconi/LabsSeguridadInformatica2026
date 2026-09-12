@@ -24,9 +24,18 @@ def roi_control(ale_antes: float, ale_despues: float, costo_anual: float) -> flo
 
 def priorizar(riesgos: list) -> list:
     """Recibe una lista de dicts {nombre, sle, aro}, agrega su 'ale' y los devuelve
-    ordenados por ALE descendente (el riesgo más costoso primero)."""
-    # TODO
-    raise NotImplementedError("Completá priorizar()")
+    ordenados por ALE descendente (el riesgo más costoso primero).
+    Devuelve una lista nueva: no muta ni reordena los dicts de entrada.
+    En empate de ALE el orden original se conserva (sort estable)."""
+    ordenados = []
+    for riesgo in riesgos:
+        if not {"nombre", "sle", "aro"} <= riesgo.keys():
+            raise ValueError("cada riesgo necesita nombre, sle y aro")
+        item = dict(riesgo)
+        item["ale"] = ale(item["sle"], item["aro"])
+        ordenados.append(item)
+    ordenados.sort(key=lambda item: item["ale"], reverse=True)
+    return ordenados
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Riesgo cuantitativo (Lab 04).")
