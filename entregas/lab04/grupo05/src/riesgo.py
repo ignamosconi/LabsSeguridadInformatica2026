@@ -44,11 +44,15 @@ def main() -> int:
     p = sub.add_parser("roi"); p.add_argument("--antes", type=float, required=True); p.add_argument("--despues", type=float, required=True); p.add_argument("--costo", type=float, required=True)
     p = sub.add_parser("priorizar"); p.add_argument("--archivo", required=True, help="JSON con lista de {nombre,sle,aro}")
     a = ap.parse_args()
-    if a.cmd == "ale": print(f"{ale(a.sle, a.aro):.2f}")
-    elif a.cmd == "roi": print(f"{roi_control(a.antes, a.despues, a.costo):.3f}")
-    elif a.cmd == "priorizar":
-        for r in priorizar(json.load(open(a.archivo))):
-            print(f"  {r['ale']:>12.2f}  {r['nombre']}")
+    try:
+        if a.cmd == "ale": print(f"{ale(a.sle, a.aro):.2f}")
+        elif a.cmd == "roi": print(f"{roi_control(a.antes, a.despues, a.costo):.3f}")
+        elif a.cmd == "priorizar":
+            for r in priorizar(json.load(open(a.archivo))):
+                print(f"  {r['ale']:>12.2f}  {r['nombre']}")
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 if __name__ == "__main__":
