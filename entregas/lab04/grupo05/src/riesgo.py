@@ -10,9 +10,8 @@ import argparse, json, sys
 
 def ale(sle: float, aro: float) -> float:
     """Annualized Loss Expectancy = SLE (pérdida por evento) x ARO (eventos/año).
-    Pista: una línea."""
-    # TODO
-    raise NotImplementedError("Completá ale()")
+    Pista: una línea. Sin redondeo: el formato lo aplica el CLI."""
+    return sle * aro
 
 def roi_control(ale_antes: float, ale_despues: float, costo_anual: float) -> float:
     """ROI de un control = (pérdida evitada - costo) / costo.
