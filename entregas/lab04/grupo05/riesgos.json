@@ -1,0 +1,32 @@
+[
+  {
+    "nombre": "Ransomware que cifra el unico backup (disco de oficina)",
+    "sle": 85000,
+    "aro": 0.4,
+    "supuesto": "SLE = 15 dias de operacion (30000) + reconstruccion sin copia usable (25000) + respuesta ad hoc (18000) + aviso a clientes (12000). Factor de exposicion ~1: el disco esta en la misma oficina y se asume montado o conectado. ARO 0.40 es supuesto de planificacion para una PyME con acceso remoto y sin MFA, no una frecuencia medida."
+  },
+  {
+    "nombre": "Toma de cuenta de empleado remoto (sin MFA ni politica de contrasenas)",
+    "sle": 28000,
+    "aro": 1.0,
+    "supuesto": "SLE = respuesta al incidente (8000) + acceso a un subconjunto de datos y fraude (12000) + soporte y reposicion de credenciales (8000). ARO 1.0: un compromiso exitoso de al menos una cuenta por ano, supuesto conservador si hay acceso remoto y no hay segundo factor."
+  },
+  {
+    "nombre": "Filtracion de PAN y DNI por el servidor web publico",
+    "sle": 160000,
+    "aro": 0.15,
+    "supuesto": "SLE = forense (20000) + notificacion (10000) + evaluaciones de marca y reemision, orden de magnitud de comercio chico, no de procesador (80000) + churn y legal (30000) + costo de proceso ante la autoridad, no una multa inventada (20000). ARO 0.15: el servidor es publico y no hay hardening descrito, pero no toda app publica se compromete cada ano."
+  },
+  {
+    "nombre": "Dano extra por ausencia de plan de respuesta (sin doble conteo)",
+    "sle": 22000,
+    "aro": 0.35,
+    "supuesto": "No es el costo del incidente: es el adicional por no tener plan. SLE = 7 dias extra de caida (14000) + retrabajo de notificacion (8000). ARO 0.35: tasa de incidentes en los que esa demora se paga. El SLE del ransomware y de la filtracion no se vuelve a sumar aca."
+  },
+  {
+    "nombre": "Perdida fisica del disco de oficina (incendio o robo, sin ciberataque)",
+    "sle": 45000,
+    "aro": 0.03,
+    "supuesto": "SLE = reconstruir registros si esa copia era la unica. ARO 0.03: incendio o robo de ese disco, no de un ransomware. Amenaza distinta del primer riesgo; no se suman."
+  }
+]
