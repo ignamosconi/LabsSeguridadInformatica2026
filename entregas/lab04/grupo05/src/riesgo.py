@@ -15,9 +15,12 @@ def ale(sle: float, aro: float) -> float:
 
 def roi_control(ale_antes: float, ale_despues: float, costo_anual: float) -> float:
     """ROI de un control = (pérdida evitada - costo) / costo.
-    pérdida evitada = ale_antes - ale_despues. >0 significa que el control se paga."""
-    # TODO
-    raise NotImplementedError("Completá roi_control()")
+    pérdida evitada = ale_antes - ale_despues. >0 significa que el control se paga.
+    Un costo cero no es un control gratis: la division no esta definida."""
+    if costo_anual == 0:
+        raise ValueError("costo_anual no puede ser 0: el ROI divide por el costo del control")
+    perdida_evitada = ale_antes - ale_despues
+    return (perdida_evitada - costo_anual) / costo_anual
 
 def priorizar(riesgos: list) -> list:
     """Recibe una lista de dicts {nombre, sle, aro}, agrega su 'ale' y los devuelve
