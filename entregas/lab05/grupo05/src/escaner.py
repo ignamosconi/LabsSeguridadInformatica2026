@@ -91,8 +91,18 @@ def leer_banner(host: str, puerto: int, timeout: float = 1.0) -> str:
     Devolvé el texto decodificado (errors='replace') y sin espacios al borde.
     Si no llega nada, devolvé cadena vacía.
     """
-    # TODO: implementá esto.
-    raise NotImplementedError("Completá leer_banner()")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            if s.connect_ex((host, puerto)) != 0:
+                return ""
+            try:
+                datos = s.recv(256)
+            except socket.timeout:
+                return ""
+    except OSError:
+        return ""
+    return datos.decode(errors="replace").strip()
 
 
 def main() -> int:
