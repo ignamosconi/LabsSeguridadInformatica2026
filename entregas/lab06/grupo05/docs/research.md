@@ -75,3 +75,73 @@ filtra:
 - Los **mensajes de commit**, que a veces contienen información operacional
   ("fix: hardcoded password in prod config").
 
+### Casos documentados y herramientas utilizadas en la industria
+
+**GitTools - la herramienta estándar del sector:** El repositorio GitTools de
+Internetwache es la suite de referencia para explotar `.git` expuestos. Contiene
+`git-dumper` (descarga el repositorio vía HTTP), `git-extractor` (reconstruye el
+working tree desde los objetos descargados) y `git-finder` (escanea listas de URLs
+buscando instancias vulnerables). El hecho de que esta herramienta exista, sea de
+código abierto y esté activamente mantenida ilustra cuán extendido es el problema
+en producción. Código y documentación en:
+https://github.com/internetwache/GitTools
+
+**Escenario tipo documentado por PortSwigger:** PortSwigger Web Security Academy
+describe el vector de directorio `.git` expuesto como una forma clásica de
+information disclosure involuntaria. El servidor no tiene la intención de revelar
+su estructura interna, pero la mala configuración lo hace de todos modos. La
+academia documenta el caso, sus variantes y los pasos de verificación en:
+https://portswigger.net/web-security/information-disclosure/exploiting
+
+**HackTricks: referencia técnica de la comunidad de seguridad ofensiva:**
+HackTricks documenta el procedimiento completo de explotación de `.git` expuestos,
+incluyendo qué archivos pedir en qué orden, cómo reconstruir el árbol de objetos
+manualmente cuando `git-dumper` no puede descargarlo todo, y casos donde la
+exposición parcial (solo algunos objetos accesibles) igual permite recuperar
+fragmentos de código sensibles:
+https://book.hacktricks.xyz/network-services-pentesting/pentesting-web/git
+
+**OWASP Web Security Testing Guide (WSTG): sección de archivos sensibles:**
+La guía oficial de OWASP clasifica los directorios de control de versiones
+expuestos (`.git`, `.svn`, `.hg`) dentro de la categoría de archivos con extensiones
+o nombres sensibles que no deberían ser accesibles desde el exterior. La sección
+incluye procedimiento de detección y criterios de impacto:
+https://github.com/OWASP/wstg/blob/master/document/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/03-File_Extensions_Handling_for_Sensitive_Information.md
+
+
+## Fuentes
+
+1. **GitTools - Internetwache** (GitHub). Suite de herramientas para explotar
+   repositorios `.git` expuestos; incluye `git-dumper`, `git-extractor` y
+   `git-finder`. Código abierto y activamente mantenido.
+   https://github.com/internetwache/GitTools
+
+2. **PortSwigger Web Security Academy** - *"Exploiting information disclosure
+   vulnerabilities"*. Referencia técnica con ejemplos prácticos del vector `.git`
+   expuesto como caso de information disclosure involuntaria.
+   https://portswigger.net/web-security/information-disclosure/exploiting
+
+3. **OWASP Web Security Testing Guide v4.2** - *Test File Extensions Handling for
+   Sensitive Information*. Guía oficial con procedimiento de detección de directorios
+   de control de versiones expuestos y criterios de impacto. Versión en GitHub
+   (acceso directo al texto):
+   https://github.com/OWASP/wstg/blob/master/document/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management/03-File_Extensions_Handling_for_Sensitive_Information.md
+
+4. **HackTricks** - *"Pentesting Web - Git"*. Documentación técnica de la comunidad
+   de seguridad ofensiva: procedimiento de explotación completo, incluyendo
+   reconstrucción manual de objetos y casos de exposición parcial.
+   https://book.hacktricks.xyz/network-services-pentesting/pentesting-web/git
+
+
+## Reflexión
+
+Antes de este lab, la idea de "desplegar con git" parecía una práctica razonable.
+El laboratorio muestra que la diferencia entre un deploy seguro y un `.git` expuesto
+es simplemente no haber configurado una regla en el servidor web, o haber usado
+`git pull` en el webroot por comodidad. El impacto no es proporcional al error: un
+descuido de configuración de dos líneas puede exponer años de historial de código,
+incluyendo secretos que ya no existen en la rama principal pero sí en el historial.
+La herramienta `git-dumper` demuestra que el ataque es completamente automatizable
+y no requiere ninguna habilidad especial más allá de saber que el vector existe.
+Eso refuerza por qué la enumeración es tan importante: el inventario detallado de
+lo que expone un servidor web no es obvio leyendo la página de inicio.
