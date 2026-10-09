@@ -1,0 +1,14 @@
+# .env de la app
+DB_HOST=phantomcorp-db
+DB_USER=phantom_app
+DB_PASS=Ph@ntom-DB-2024
+APP_SECRET=FLAG{loot_credentials_found}
+
+# historial de comandos del usuario
+ls -la
+cat /var/www/.env
+curl http://phantomcorp-db/
+
+# grep de secretos en /var/www
+/var/www/.env:DB_PASS=Ph@ntom-DB-2024
+/var/www/.env:APP_SECRET=FLAG{loot_credentials_found}

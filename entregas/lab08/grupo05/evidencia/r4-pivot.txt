@@ -1,0 +1,5 @@
+# Desde la CONSOLA ATACANTE: el host interno NO se alcanza (red segmentada)
+(sin ruta a phantomcorp-db: timeout/unreachable)
+
+# Desde la VICTIMA (pivot): sí llega al host interno
+{"host": "phantomcorp-db", "msg": "Base de datos interna. Acceso restringido a la LAN.", "pivot": "FLAG{pivot_internal_host}"}

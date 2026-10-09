@@ -1,0 +1,4 @@
+[!] error en id=1: <urlopen error [Errno 111] Connection refused>
+[!] error en id=2: <urlopen error [Errno 111] Connection refused>
+[*] Enumerando legajos 1..2 en http://127.0.0.1:9
+[-] No se encontró el flag en el rango dado.
