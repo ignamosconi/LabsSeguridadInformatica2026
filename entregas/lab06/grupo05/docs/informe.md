@@ -256,3 +256,34 @@ es mínimo privilegio: solo habilitar los métodos que la aplicación efectivame
 necesita.
 
 
+## 4. Bitácora de comandos
+
+```bash
+# Verificación del target
+curl -s http://phantomcorp/
+
+# R1: Enumeración de directorios
+dirb http://phantomcorp/
+curl -s http://phantomcorp/backup/
+
+# R2: Repositorio git expuesto
+curl -s http://phantomcorp/.git/config
+
+# R3: Métodos HTTP peligrosos
+curl -X OPTIONS -i http://phantomcorp/
+
+# R4: API de usuarios
+curl -s http://phantomcorp/api/users | python3 -m json.tool
+
+# R5: Fingerprinting
+whatweb http://phantomcorp
+curl -s http://phantomcorp/phantomcms/VERSION
+
+# Entrega de flags
+./ctf submit 06 R1 'FLAG{dir_enumeration_backup}'
+./ctf submit 06 R2 'FLAG{git_repo_exposed}'
+./ctf submit 06 R3 'FLAG{http_methods_put_enabled}'
+./ctf submit 06 R4 'FLAG{user_enumeration_api}'
+./ctf submit 06 R5 'FLAG{tech_fingerprint_phantomcms}'
+./ctf status 06
+```
