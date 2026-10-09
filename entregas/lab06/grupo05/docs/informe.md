@@ -162,3 +162,53 @@ FLAG{tech_fingerprint_phantomcms}
 
 
 
+## 3. Preguntas de análisis
+
+### P1 - Enumeración vs. reconocimiento
+
+El reconocimiento (Lab 05) responde a la pregunta *¿qué existe?*: se identificaron
+los hosts activos, los puertos abiertos y los servicios que escuchan en ellos
+mediante `nmap -sV`. El resultado fue un mapa: "puerto 80 abierto, servidor web
+PhantomCMS 3.7". En ese momento no sabíamos nada sobre el *interior* del servicio.
+
+La enumeración (este lab) responde a *¿qué esconde cada cosa?*: tomamos ese servicio
+ya identificado y lo interrogamos en profundidad. Con `dirb` probamos miles de rutas
+para encontrar `/backup`; con `curl /.git/config` confirmamos un repositorio expuesto;
+con `curl -X OPTIONS` preguntamos qué métodos acepta. El resultado es un inventario
+detallado de superficie de ataque dentro de ese único servicio.
+
+Dos diferencias concretas: 
+- a) En el Lab 05 usamos nmap sobre rangos de IP y puertos (alcance amplio, profundidad mínima). En este lab usamos dirb sobre un único host (alcance mínimo, profundidad máxima).
+- b) El Lab 05 no tocó ninguna ruta HTTP interna; el Lab 06 las enumeró todas.
+
+### P2 - El `.git` expuesto
+
+Un archivo suelto filtrado expone ese archivo. Un `.git` expuesto es cualitativamente
+distinto: expone el repositorio completo, con toda su historia.
+
+Con `git-dumper` (o `GitTools`) un atacante baja el objeto pack del repositorio,
+reconstruye el working tree y obtiene:
+- a) El código fuente actual y toda su lógica interna, incluyendo rutas privadas, validaciones y lógica de autenticación.  
+- b) El historial de commits, donde pueden existir credenciales, tokens de API o claves
+privadas que fueron commiteadas y luego eliminadas. Eliminar un secreto de la rama
+principal no lo borra del historial: `git log --all -p` los recupera.
+
+En este lab, el `/.git/config` expuesto reveló la URL interna del repositorio
+(`git.internal.phantomcorp/intranet.git`) y la flag. Un atacante real podría usar
+esa URL para intentar clonar el repo directamente si el servidor git interno está
+accesible, o usar `git-dumper` para reconstruirlo desde los objetos HTTP.
+
+### P3 - El método `PUT` habilitado
+
+El método HTTP `PUT` permite al cliente enviar un archivo al servidor y que este lo
+almacene en la ruta indicada. Con `PUT` habilitado, el ataque concreto es:
+
+1. Subir un webshell: `curl -X PUT http://phantomcorp/shell.py --data-binary @shell.py`
+2. Acceder al webshell por GET: `curl http://phantomcorp/shell.py?cmd=id`
+3. El servidor ejecuta el comando y devuelve la salida → RCE (Remote Code Execution).
+
+El header `Allow: GET, POST, PUT, DELETE, OPTIONS` encontrado en la respuesta
+OPTIONS confirma que el servidor acepta `PUT`. Combinado con la ausencia de
+autenticación, este hallazgo es un vector directo de ejecución de código remoto
+sin necesidad de explotar vulnerabilidades en el código de la aplicación.
+
