@@ -94,3 +94,42 @@ seguridad web está llena de bypasses de funciones de escape "custom". La
 parametrización no compite en esa carrera: no depende de anticipar caracteres
 peligrosos porque el valor nunca vuelve a ser código.
 
+## Fuentes (mín. 3, verificables)
+
+1. **OWASP Cheat Sheet Series — "SQL Injection Prevention Cheat Sheet"**.
+   Recomienda las consultas parametrizadas como defensa primaria (Defense
+   Option #1) sobre cualquier forma de escapado o sanitización manual, y
+   explica por qué separan la estructura del dato en el protocolo del driver.
+   https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+
+2. **PortSwigger Web Security Academy — "SQL injection"**. Documenta el
+   mecanismo de la inyección (concatenación de input no confiable en la
+   consulta) y por qué las consultas parametrizadas, al compilar la consulta
+   antes de insertar los valores, eliminan la clase de vulnerabilidad en el
+   punto de entrada parametrizado.
+   https://portswigger.net/web-security/sql-injection
+
+3. **OWASP Top 10:2021 — A03:2021 Injection**. Ubica la SQL injection dentro de
+   la categoría más amplia de inyección y lista las consultas parametrizadas
+   (prepared statements con *parameterization*) como la recomendación de
+   prevención número uno, antes que validación de entrada o escapado.
+   https://owasp.org/Top10/A03_2021-Injection/
+
+4. **Documentación oficial de Python — módulo `sqlite3`**. Explica el uso de
+   marcadores de posición (`?`) en `execute()` para pasar valores sin
+   construir el SQL por concatenación de strings, con advertencia explícita de
+   no usar f-strings ni `%` para armar consultas.
+   https://docs.python.org/3/library/sqlite3.html#sqlite3-placeholders
+
+## Reflexión
+
+Resolver R1 y R2 a mano deja clarísimo algo que leer la teoría sola no
+transmite igual: la inyección no es un "truco", es la consecuencia directa y
+mecánica de que el servidor construye una sola cadena de texto mezclando algo
+que el programador decidió (la consulta) con algo que decidió otra persona (el
+input). El `--` que usamos en el R1 no "rompe" nada en un sentido mágico: es
+sintaxis SQL perfectamente válida que el motor ejecuta de buena fe, porque
+nunca supo que ese fragmento venía de un campo de formulario. Entender esto
+cambia la pregunta de "¿cómo evito que metan comillas raras?" a "¿cómo evito
+que el dato vuelva a ser interpretado como código alguna vez?" — y esa segunda
+pregunta es, exactamente, lo que resuelven las consultas parametrizadas.
