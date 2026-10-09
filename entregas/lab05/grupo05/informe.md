@@ -24,7 +24,8 @@ siempre con validación manual del grupo:
   de la consola del atacante contra `phantomcorp`; las salidas pegadas son las de
   nuestras corridas (ver `evidencia/`).
 - **Datos de CVE/CVSS.** Los números de CVE, sus scores y vectores los tomamos
-  de la fuente primaria (NVD) y los **verificamos uno por uno** contra la versión
+  de NVD (indicando cuando el score es del CNA y no de NVD, como en
+  CVE-2024-34069) y los **verificamos uno por uno** contra la versión
   que efectivamente devolvió el objetivo. No dimos por buena ninguna afirmación
   del asistente sin contrastarla con la evidencia del lab o con la fuente citada.
 
@@ -73,7 +74,7 @@ puertos abiertos; corrida completa en `evidencia/nmap-full-sv.txt`):
 |---|---|---|---|---|---|---|---|
 | 21 | FTP | **ProFTPD 1.3.5** — banner `220 ProFTPD 1.3.5 Server (PhantomCorp FTP)` (*medida*) | Banner grabbing con `ncat` + confirmado por `nmap -sV` | **CVE-2015-3306** (módulo `mod_copy`) | **10.0** CVSSv2 (*publicada*, NVD) | **Crítica** | La versión exacta 1.3.5 es la afectada por `mod_copy`: `SITE CPFR/CPTO` permite lectura/escritura de archivos arbitrarios → RCE sin autenticación. El banner por sí solo ya delata que es explotable. |
 | 80 | HTTP | **PhantomServer/2.4.1** con `X-Powered-By: PhantomCMS 2.4.1` (*medida*) | `curl -I` (headers) + `nmap -sV` | Ninguno aplicable | — | **Media** | No hay CVE: es software del propio lab, no aparece en NVD. El problema real es **fuga de información**: los headers cantan producto y versión, y el HTML tiene un comentario `TODO(infra): sacar el panel interno de produccion`. Baja la barrera para el siguiente atacante. |
-| 8080 | HTTP (dev API) | **Werkzeug 2.0.1 (Python 3.9.2)** — banner `Server: Werkzeug/2.0.1 Python/3.9.2` (*medida*) | `nmap -sV` + `curl -I`; el body responde `phantom-dev-api` y `/status` da `debug:true` | **CVE-2024-34069** (Werkzeug < 3.0.3, debugger) — *aplica a la versión, bajo condiciones* | **7.5** CVSSv3.1 (*publicada*, NVD) | **Alta** | Es el **servidor de desarrollo de Werkzeug corriendo en “producción”**: `version: 0.9.3-DEV` y `debug:true` expuestos en `/status`. Con el debugger de Werkzeug activo, un atacante puede llegar a ejecución de código (CVE-2024-34069). Aunque no hubiera CVE, un dev server con debug nunca debería mirar a la red. |
+| 8080 | HTTP (dev API) | **Werkzeug 2.0.1 (Python 3.9.2)** — banner `Server: Werkzeug/2.0.1 Python/3.9.2` (*medida*) | `nmap -sV` + `curl -I`; el body responde `phantom-dev-api` y `/status` da `debug:true` | **CVE-2024-34069** (Werkzeug < 3.0.3, debugger) — *aplica a la versión, bajo condiciones* | **7.5** CVSSv3.1 `AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:H` (*publicada*; score del CNA GitHub, listado en NVD — NVD no asignó score propio) | **Alta** | Es el **servidor de desarrollo de Werkzeug corriendo en “producción”**: `version: 0.9.3-DEV` y `debug:true` expuestos en `/status`. La versión 2.0.1 cae en el rango afectado por CVE-2024-34069, pero ese CVE **no es explotable de forma directa**: exige que el debugger esté activo, engañar a un desarrollador para que use un dominio controlado por el atacante (`UI:R`, `AC:H`) y que ingrese el PIN. Por eso no la marcamos Crítica. La criticidad Alta la sostiene la mala configuración: aunque no hubiera CVE, un dev server con debug nunca debería mirar a la red. |
 | 31337 | TCP a medida | **“PhantomCorp maintenance shell v0.1”** — banner (*medida*); nmap lo marca `Elite?` sin fingerprint | Banner grabbing con `ncat` | No clasificable | — | **Alta (indeterminada)** | Servicio de mantenimiento a medida, **sin versión pública ni CVE asociado**: honestamente **no podemos clasificarlo por CVE**. Pero un “maintenance shell” escuchando en un puerto alto, sin autenticación visible, es superficie de ataque de por sí. |
 
 **Evidencia de respaldo** (`nmap -Pn -sV -p- phantomcorp`, extracto):
@@ -131,10 +132,14 @@ El 8080 grita “desarrollo” por varias vías concretas que medimos: (1) el he
 `Server: Werkzeug/2.0.1 Python/3.9.2` — Werkzeug es el **servidor de desarrollo**
 de Flask, explícitamente desaconsejado para producción por su propia
 documentación; (2) el endpoint `/status` devuelve `"version":"0.9.3-DEV"` y
-`"debug":true`. Es un problema **aunque no hubiera un CVE**: con `debug:true`
-Werkzeug habilita el **debugger interactivo**, que ante cualquier excepción
-muestra el traceback y una consola Python remota — es decir, ejecución de código
-si se sortea el PIN (justamente lo que formaliza CVE-2024-34069). Sumado a que un
+`"debug":true`. Es un problema **aunque no hubiera un CVE**: si ese `debug`
+corresponde al modo debug de Flask/Werkzeug, está habilitado el **debugger
+interactivo**, que ante cualquier excepción muestra el traceback y ofrece una
+consola Python protegida sólo por un PIN — o sea, a un paso de ejecución de
+código. (CVE-2024-34069 es una variante de ese riesgo, pero con condiciones
+exigentes: requiere engañar a un desarrollador para que use un dominio del
+atacante e ingrese el PIN; no la presentamos como explotable directamente
+contra PhantomCorp.) Sumado a que un
 dev server no está pensado para aguantar carga ni ataques, exponerlo a la red es
 regalar una vía de entrada. La ausencia de CVE no lo vuelve seguro: la
 **mala configuración** ya es la vulnerabilidad.
