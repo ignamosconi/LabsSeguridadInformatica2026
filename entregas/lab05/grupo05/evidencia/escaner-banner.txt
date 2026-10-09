@@ -1,0 +1,6 @@
+[*] Escaneando phantomcorp — 4 puertos...
+     21/tcp  ABIERTO   banner: '220 ProFTPD 1.3.5 Server (PhantomCorp FTP) [::ffff:0.0.0.0]\r\n214 FLAG{banner_grab_proftpd_135}'
+     80/tcp  ABIERTO
+   8080/tcp  ABIERTO
+  31337/tcp  ABIERTO   banner: 'PhantomCorp maintenance shell v0.1 -- acceso no autorizado prohibido\nFLAG{high_port_secret_service}'
+[*] Listo. 4 puerto(s) abierto(s): [21, 80, 8080, 31337]
