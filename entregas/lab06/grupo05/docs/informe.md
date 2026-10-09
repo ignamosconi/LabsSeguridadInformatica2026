@@ -212,3 +212,47 @@ OPTIONS confirma que el servidor acepta `PUT`. Combinado con la ausencia de
 autenticación, este hallazgo es un vector directo de ejecución de código remoto
 sin necesidad de explotar vulnerabilidades en el código de la aplicación.
 
+### P4 - Enumeración de usuarios: por qué importa aunque no haya contraseñas
+
+La API `/api/users` devolvió tres usuarios: `admin` (superuser), `jperez` (editor)
+y `mgomez` (viewer). Sin contraseñas, esto podría parecer inofensivo. No lo es,
+por tres razones:
+
+**1. Fuerza bruta dirigida:** sin enumerar, un atacante prueba millones de
+combinaciones usuario+contraseña. Con la lista de usuarios válidos, el espacio de
+búsqueda se reduce al espacio de contraseñas solamente, y puede priorizarse
+`admin` por su rol privilegiado.
+
+**2. Credential stuffing:** si estas personas reutilizan contraseñas en otros
+servicios y esas contraseñas están en filtraciones públicas (HaveIBeenPwned), el
+atacante cruza los usuarios enumerados con las bases de datos de filtraciones.
+
+**3. Insumo para Lab 07:** la API no solo lista usernames: expone los roles. Saber que `admin` tiene rol `superuser` 
+mientras `mgomez` es viewer permite priorizar el objetivo de mayor impacto. Comprometer `mgomez` da acceso limitado 
+comprometer `admin` da control total del sistema. Esa información de roles convierte un ataque genérico en uno quirúrgico: el payload de SQLi puede apuntar específicamente a `WHERE user='admin'`, y en un ataque de fuerza bruta se 
+concentran los recursos en esa cuenta primero.
+
+### P5 - Mitigaciones concretas (defensor)
+
+**Hallazgo 1: `/backup` accesible:**  
+Mitigación: mover el directorio de backups fuera del webroot del servidor, o si debe
+estar en el filesystem, configurar el servidor web para denegar el acceso:
+en nginx: `location /backup { deny all; }`. Adicionalmente, cifrar los backups
+en reposo con GPG o similar, de forma que incluso si el archivo es accedido,
+las credenciales estén protegidas.
+
+**Hallazgo 2:  `/.git` expuesto:**  
+Mitigación: nunca desplegar la carpeta `.git` al servidor de producción. El pipeline
+de deployment debe construir un artefacto (zip, imagen Docker, etc.) sin incluir el
+directorio `.git`. Como defensa en profundidad adicional, configurar el servidor web
+para bloquear el acceso a directorios que empiecen con punto:
+en nginx: `location ~ /\. { deny all; }`.
+
+**Hallazgo 3: `PUT` y `DELETE` habilitados:**  
+Mitigación: deshabilitar explícitamente los métodos HTTP peligrosos en la
+configuración del servidor. En nginx: `limit_except GET POST { deny all; }`. En
+Apache: `<LimitExcept GET POST> Require all denied </LimitExcept>`. El principio
+es mínimo privilegio: solo habilitar los métodos que la aplicación efectivamente
+necesita.
+
+
