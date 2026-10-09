@@ -1,81 +1,158 @@
-# Mini-research • Laboratorio 06
+# Mini-research — Laboratorio 02
 
 **Tema elegido:** *(uno)*
 
-Elegimos el tema A:
+Si consideramos al tema "A" como el tema 0, el B 1, etc; y sabiendo que somos el  
+grupo N° 5,  elegimos el tema B tras hacer la operación 5 mod 4. El resultado fue  
+1, por lo que elegimos la opción B.
 
-- [x] **A.** Cómo un `.git` expuesto permite reconstruir el código (git-dumper) y
-  casos reales de credenciales filtradas por esta vía.
-- [ ] **B.** Wordlists de enumeración: qué son SecLists, cómo se eligen, por qué
-  una wordlist mala hace fallar la enumeración.
-- [ ] **C.** El método HTTP `PUT` y el WebDAV: cómo se pasa de "método habilitado"
-  a subir un webshell.
-- [ ] **D.** Fingerprinting pasivo vs. activo: cómo `whatweb` deduce el stack.
-
+- [ ] **A.** Modos de operación de cifrado por bloques (ECB vs CBC vs GCM) y por
+  qué ECB filtra estructura (el "pingüino" de Adobe).
+- [x] **B.** HMAC y el ataque de length-extension: cómo funciona el ataque y por
+  qué HMAC lo previene.
+- [ ] **C.** Derivación de claves desde contraseñas (PBKDF2, bcrypt, scrypt,
+  Argon2): por qué un `sha256(password)` no alcanza.
+- [ ] **D.** Cifrado asimétrico y firmas digitales: qué problema resuelven que el
+  simétrico no.
 
 
 ## Desarrollo
 
-### ¿Qué es un repositorio `.git` y por qué es sensible?
+### El problema de fondo: Merkle-Damgård y el estado expuesto
 
-Cuando un proyecto usa Git, el directorio `.git/` almacena toda la información del
-repositorio: el historial completo de commits, los objetos (blobs, trees, commits),
-las referencias a ramas y tags, y el archivo de configuración que puede incluir URLs
-internas, nombres de usuarios y a veces credenciales de repositorios remotos.
+SHA-256 (como MD5 y SHA-1) está construido sobre la construcción de
+Merkle-Damgård. El algoritmo parte de un estado interno inicial (IV fijo),
+divide el mensaje en bloques de 512 bits y aplica iterativamente una función de
+compresión:
 
-En un servidor web típico, el código se despliega copiando los archivos al webroot
-(por ejemplo, `/var/www/html/`). Si el deploy se hace con `git clone` o `git pull`
-directamente en ese directorio, la carpeta `.git/` queda expuesta bajo la raíz del
-sitio. Si el servidor web no está configurado para bloquear el acceso a directorios
-que empiezan con punto, cualquier visitante puede pedir
-`http://objetivo.com/.git/config` y obtener la respuesta.
-
-### Cómo se reconstruye el código con git-dumper
-
-El ataque se realiza en dos etapas:
-
-**Etapa 1: Confirmar la exposición:**
-```bash
-curl -s http://objetivo.com/.git/config
 ```
-Si responde 200 con contenido de configuración git (empieza con `[core]`), el
-repositorio está expuesto.
-
-**Etapa 2: Reconstruir el repositorio con GitTools:**
-La herramienta `git-dumper` (parte de la suite GitTools de Internetwache) descarga
-recursivamente los objetos del repositorio haciendo peticiones HTTP a rutas conocidas
-de la estructura interna de git: `.git/HEAD`, `.git/index`, `.git/objects/pack/`,
-entre otras. Con esos objetos descargados localmente, reconstruye el working tree
-completo.
-
-```bash
-git-dumper http://objetivo.com/.git/ repositorio-local/
-cd repositorio-local/
-git log --oneline --all    # ver todo el historial
-git log --all -p           # ver los diffs, incluyendo credenciales eliminadas
+estado₀ = IV (constante)
+estadoᵢ = compress(estadoᵢ₋₁, bloqueᵢ)
+hash(m) = estadoₙ
 ```
 
-El resultado es una copia funcional del repositorio con todo su historial. Si en
-algún commit pasado existió una contraseña o un token de API que luego fue eliminado
-con otro commit, `git log --all -p` lo muestra igualmente: eliminar un secreto de
-la rama principal no lo borra del historial de objetos git.
+La operación termina agregando un bloque de padding que codifica la longitud
+del mensaje original (esto es el _length padding_ de Merkle-Damgård, necesario
+para la seguridad de la construcción básica). El valor final publicado como
+digest **es exactamente el estado interno** `estadoₙ`.
 
-### Por qué es más grave que "un archivo de más"
+Esta propiedad hace que SHA-256 sea eficiente y componible, pero tiene una
+consecuencia directa: quien conozca `hash(m)` conoce el estado interno tras
+procesar `m`. Puede continuar el cómputo como si fuera el propio algoritmo,
+sin necesidad de haber visto `m` en absoluto.
 
-Un archivo de configuración expuesto filtra esa configuración. Un `.git` expuesto
-filtra:
+### El ataque de length-extension paso a paso
 
-- El **código fuente actual** de toda la aplicación: lógica de negocio, rutas
-  internas no documentadas, validaciones de autenticación y autorización.
-- El **historial completo**: credenciales de base de datos, tokens de API y claves
-  privadas que pasaron por el repositorio en algún momento, aunque hayan sido
-  "eliminadas" después.
-- Las **URLs de repositorios remotos** (en `.git/config`), que pueden ser servidores
-  git internos accesibles desde la red.
-- Los **mensajes de commit**, que a veces contienen información operacional
-  ("fix: hardcoded password in prod config").
+Supongamos que un servidor genera un "MAC" como:
 
-### Casos documentados y herramientas utilizadas en la industria
+```
+tag = sha256(clave_secreta || mensaje)
+```
 
-**GitTools - la herramienta estándar del sector:** El repositorio GitTools de
-Internetwache es la suite de referencia para explotar `.git` expuestos. Contiene
+y lo envía al cliente junto con `mensaje`. Un atacante pasivo intercepta ambos.
+No conoce `clave_secreta`.
+
+El atacante quiere forjar un tag válido para el mensaje extendido:
+
+```
+mensaje_forjado = mensaje || padding_de_merkle_damgård || datos_extra
+```
+
+donde `padding_de_merkle_damgård` es el padding que SHA-256 habría insertado
+al terminar de procesar `clave_secreta || mensaje` (calculable conociendo la
+longitud estimada de la clave, que suele ser pública o deducible).
+
+El atacante:
+
+1. Inicializa el estado interno de SHA-256 con el valor de `tag` interceptado
+   (en lugar del IV estándar).
+2. Continúa el cómputo de SHA-256 alimentando `datos_extra` como si fueran
+   bloques adicionales del mismo mensaje.
+3. Obtiene `tag_forjado = sha256(clave_secreta || mensaje_forjado)` — un tag
+   completamente válido — sin haber tocado la clave en ningún momento.
+
+El servidor recibe `(mensaje_forjado, tag_forjado)`, computa
+`sha256(clave_secreta || mensaje_forjado)` y obtiene exactamente `tag_forjado`.
+La verificación pasa. La falsificación tuvo éxito.
+
+Herramientas como **hashpump** automatizan este proceso: dados el tag original,
+la longitud estimada de la clave y el string a agregar, producen el mensaje
+extendido y el tag forjado en milisegundos.
+
+### Por qué HMAC lo previene
+
+HMAC (RFC 2104) rompe la linealidad de Merkle-Damgård con una doble envoltura
+keyed:
+
+```
+HMAC(K, m) = H( (K ⊕ opad) || H( (K ⊕ ipad) || m ) )
+```
+
+- `ipad = 0x36 repetido` / `opad = 0x5c repetido` (constantes estándar)
+- `K` se rellena o comprime al tamaño de bloque de H
+
+El hash **interno** `H((K ⊕ ipad) || m)` procesa el mensaje con una clave
+derivada. El resultado es un valor opaco de 32 bytes. Ese valor se convierte en
+la entrada del hash **externo** junto con `K ⊕ opad`.
+
+Un atacante que intentara aplicar length-extension al hash interno obtendría un
+valor que no es la salida de HMAC: para convertirlo en un HMAC válido tendría
+que invertir o falsificar el hash externo — lo que equivale a romper SHA-256,
+computacionalmente inviable. La doble envoltura hace que el estado interno
+después del hash externo nunca sea observable directamente.
+
+Formalmente, se puede probar que si H es una función de hash segura en el
+modelo PRF, entonces HMAC es un PRF seguro. Esta prueba no depende de la
+ausencia del ataque de length-extension: HMAC es seguro incluso si H lo
+padece.
+
+### HMAC en Python (biblioteca estándar)
+
+```python
+import hmac, hashlib
+
+def mac_hmac(clave: bytes, msg: bytes) -> str:
+    return hmac.new(clave, msg, hashlib.sha256).hexdigest()
+
+def verificar_mac(esperado: str, recibido: str) -> bool:
+    # compare_digest: tiempo constante → evita timing attacks
+    return hmac.compare_digest(esperado, recibido)
+```
+
+La comparación con `compare_digest` es crítica: una comparación byte a byte
+normal (`==`) termina al primer byte diferente, filtrando información de cuántos
+bytes ya son correctos. Un atacante que pueda medir tiempos de respuesta con
+precisión puede reconstruir el MAC válido sin conocer la clave (timing attack).
+`compare_digest` recorre siempre los dos strings completos en tiempo constante,
+cerrando ese canal lateral.
+
+
+## Fuentes
+
+1. Krawczyk, Bellare & Canetti. **"HMAC: Keyed-Hashing for Message
+   Authentication"**. RFC 2104, IETF, 1997.
+   <https://www.rfc-editor.org/rfc/rfc2104>
+
+2. Bellare, Canetti & Krawczyk. **"Keying Hash Functions for Message
+   Authentication"**. CRYPTO 1996. LNCS 1109, pp. 1–15.
+   <https://cseweb.ucsd.edu/~mihir/papers/kmd5.pdf>
+
+3. Crosby, Wallach & RIEDI. **"Opportunities and Limits of Remote Timing
+   Attacks"**. Rice University 2009.
+   <https://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf>
+
+4. NIST. **"Recommendation for Applications Using Approved Hash Algorithms"**.
+   FIPS 198-1 / SP 800-107 Rev.1.
+   <https://csrc.nist.gov/pubs/fips/198-1/final>
+
+
+## Reflexión
+
+Lo que más llama la atención de este tema es que el problema no está en SHA-256
+sino en suponerle propiedades que no tiene. `sha256(clave || mensaje)` se
+comporta exactamente como se diseñó SHA-256: procesa bytes y expone su estado.
+El error está en asumir que eso equivale a autenticación. HMAC no es un parche:
+es un diseño que piensa desde el principio en qué información debe ser opaca y
+quién puede continuarla. La lección se generaliza a toda la criptografía
+aplicada: antes de usar una primitiva hay que leer su modelo de seguridad, no
+solo su firma de función.
