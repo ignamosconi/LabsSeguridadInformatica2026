@@ -52,8 +52,32 @@ def parsear_puertos(spec: str) -> list[int]:
       - Validar que estén en 1..65535; si no, error claro y salir con código 2.
       - Sin duplicados y ordenados.
     """
-    # TODO: implementá esto.
-    raise NotImplementedError("Completá parsear_puertos()")
+    puertos: set[int] = set()
+    for parte in spec.split(","):
+        parte = parte.strip()
+        if not parte:
+            continue
+        if "-" in parte:
+            desde_txt, hasta_txt = parte.split("-", 1)
+            try:
+                desde, hasta = int(desde_txt), int(hasta_txt)
+            except ValueError:
+                print(f"[!] Rango invalido: {parte!r}", file=sys.stderr)
+                sys.exit(2)
+            if desde > hasta:
+                desde, hasta = hasta, desde
+            puertos.update(range(desde, hasta + 1))
+        else:
+            try:
+                puertos.add(int(parte))
+            except ValueError:
+                print(f"[!] Puerto invalido: {parte!r}", file=sys.stderr)
+                sys.exit(2)
+    for p in puertos:
+        if not 1 <= p <= 65535:
+            print(f"[!] Puerto fuera de rango 1..65535: {p}", file=sys.stderr)
+            sys.exit(2)
+    return sorted(puertos)
 
 
 # ── B.2 — Banner grabbing. TODO ──────────────────────────────────────────────
