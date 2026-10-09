@@ -45,3 +45,76 @@ código fuente del target.
 | Command injection (R3) | `host=127.0.0.1; cat /app/flags/cmdi.txt` | `ping -c1 127.0.0.1; cat /app/flags/cmdi.txt` ejecutado por el shell del servidor | Ejecución de comandos arbitrarios (RCE) con los privilegios del proceso web | No invocar un shell: usar una librería de red (sockets, `ping3`) o `subprocess` con lista de argumentos y sin `shell=True`; validar `host` contra una whitelist (IP/hostname) |
 | Path traversal (R4) | `archivo=../flags/lfi.txt` | `open("public/" + "../flags/lfi.txt")` → resuelve a `flags/lfi.txt`, fuera de `public/` | Lectura de archivos arbitrarios del servidor fuera del directorio público | Normalizar la ruta resultante (`os.path.realpath`) y rechazar si no queda dentro del directorio permitido; además, lista blanca de nombres de archivo descargables |
 | IDOR (R5) | `GET /perfil?id=1` (perfil propio es `id=3`) | El servidor responde el recurso `perfil/1` sin verificar que `1` pertenezca al usuario autenticado | Lectura de datos privados de otro usuario (nota privada del `admin`) | Verificar en el servidor, con el usuario autenticado de la sesión, que el objeto solicitado le pertenece (o que su rol lo autoriza) — nunca confiar en que el cliente "no va a cambiar el id" |
+
+## 3. Preguntas de análisis
+
+### P1 — por qué funciona el bypass (con la query)
+
+La consulta del login se arma concatenando el input tal cual:
+
+```sql
+SELECT user, rol FROM users WHERE user='<user>' AND pass='<pass>'
+```
+
+Con `user = admin' -- ` y `pass = x`, la consulta final queda:
+
+```sql
+SELECT user, rol FROM users WHERE user='admin' -- ' AND pass='x'
+```
+
+El `--` es el marcador de comentario de línea en SQL (en el dialecto usado por
+el motor del lab, seguido de un espacio). Todo lo que sigue en la línea —
+incluida la comilla de cierre del `user` que faltaba, el `AND pass='x'` y la
+comilla final— queda comentado y el motor nunca lo evalúa. La consulta
+efectiva que se ejecuta es:
+
+```sql
+SELECT user, rol FROM users WHERE user='admin'
+```
+
+Esto devuelve la fila de `admin` sin haber verificado jamás la contraseña: el
+chequeo de `pass` no es que falle, es que **nunca se ejecuta**. El servidor,
+al recibir una fila, asume autenticación correcta.
+
+### P2 — por qué el UNION necesita igual número de columnas
+
+`UNION` en SQL combina el resultado de dos `SELECT` en una sola tabla de
+salida, fila a fila. Para que el motor pueda alinear esas filas necesita que
+ambas consultas devuelvan la **misma cantidad de columnas** (y, en los motores
+más estrictos, tipos compatibles columna a columna). Si la consulta original
+trae 2 columnas y la nuestra trae 3, el motor no sabe cómo "empalmar" las
+filas y devuelve un error en lugar de resultados.
+
+Si no supiéramos de antemano cuántas columnas tiene la consulta original, se
+descubre por fuerza bruta incremental con `ORDER BY`:
+
+```text
+q=Router' ORDER BY 1 -- 
+q=Router' ORDER BY 2 -- 
+q=Router' ORDER BY 3 -- 
+```
+
+Se va subiendo el número hasta que el motor responde con un error del tipo
+*"ORDER BY term out of range"* (que fue exactamente el error que obtuvimos al
+probar con `3`, confirmando que la consulta real trae 2 columnas). El número
+anterior al que rompe es la cantidad real de columnas, y ese mismo número es
+el que hay que replicar en el `UNION SELECT`.
+
+### P3 — qué sigue después del RCE
+
+Con ejecución de comandos (R3) un atacante real no se queda en "leí un
+archivo": el siguiente paso lógico es **afianzar y expandir** el acceso,
+exactamente el tema del Lab 08 (post-explotación):
+
+- Reconocimiento del entorno comprometido: `whoami`, `id`, `uname -a`, ver qué
+  procesos corren y con qué privilegios corre la app web.
+- Búsqueda de credenciales y secretos en el filesystem (archivos de
+  configuración, variables de entorno, historiales de shell).
+- Establecer **persistencia** (una cron job, una clave SSH agregada, un
+  usuario nuevo) para no depender de que la vulnerabilidad original siga
+  abierta.
+- **Pivoting**: desde este host, explorar la red interna en busca de otros
+  sistemas alcanzables que no estén expuestos directamente a Internet.
+- Escalar privilegios si el proceso web corre con un usuario sin privilegios
+  (por ejemplo, buscando binarios SUID mal configurados).
+
