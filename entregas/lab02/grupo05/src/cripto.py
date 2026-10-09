@@ -86,6 +86,30 @@ def romper_xor_1byte(cifrado: bytes) -> tuple[int, bytes]:
 
 
 
+# ---------------------------------------------------------------------------
+# B.2 — MAC ingenuo vs HMAC.
+# ---------------------------------------------------------------------------
+def mac_ingenuo(clave: bytes, msg: bytes) -> str:
+    """
+    Devuelve sha256(clave || msg) en hex. Es lo que MUCHA gente hace...
+    y es vulnerable a length-extension. Lo implementás para después romperlo
+    conceptualmente en el informe.
+    """
+    return hashlib.sha256(clave + msg).hexdigest()
+ 
+def mac_hmac(clave: bytes, msg: bytes) -> str:
+    #Devuelve el HMAC-SHA256 en hex. Esta es la forma CORRECTA.
+    return hmac.new(clave, msg, hashlib.sha256).hexdigest()
+ 
+def verificar_mac(esperado: str, recibido: str) -> bool:
+    """
+    Compara dos MAC en hex. DEBE ser en tiempo constante para no filtrar
+    información por el tiempo de comparación.
+    Pista: hmac.compare_digest.
+    """
+    return hmac.compare_digest(esperado, recibido)
+ 
+ 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Herramientas de cripto (Lab 02).")
     sub = ap.add_subparsers(dest="cmd", required=True)
