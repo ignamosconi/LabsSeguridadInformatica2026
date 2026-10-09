@@ -118,3 +118,56 @@ exactamente el tema del Lab 08 (post-explotación):
 - Escalar privilegios si el proceso web corre con un usuario sin privilegios
   (por ejemplo, buscando binarios SUID mal configurados).
 
+### P4 — por qué parametrizar mata la SQLi de raíz
+
+Una consulta parametrizada (*prepared statement*) separa, a nivel del
+protocolo con la base de datos, **la estructura de la consulta** del
+**valor de los datos**. El motor primero recibe y compila la plantilla:
+
+```sql
+SELECT user, rol FROM users WHERE user = ? AND pass = ?
+```
+
+y *después* recibe los valores (`admin' -- `, `x`) para llenar esos
+placeholders. En ningún momento esos valores se insertan como texto SQL que el
+parser vuelva a interpretar: se tratan como **datos literales**, sin importar
+qué caracteres contengan. Una comilla, un `--` o un `UNION` dentro del valor
+nunca se convierte en sintaxis SQL, porque el parser ya terminó de leer la
+estructura de la consulta antes de que el valor exista en esa posición.
+
+Esto es categóricamente distinto de "escapar comillas" (sanitizar), que sigue
+operando sobre un único string donde datos y código conviven: siempre puede
+aparecer un caso borde o una codificación que el escapado no contempló.
+Parametrizar no mitiga el riesgo, lo elimina: la inyección deja de ser
+posible porque la frontera datos/código nunca se vuelve a construir
+concatenando texto.
+
+### P5 — dónde va el control de acceso (IDOR)
+
+El control de acceso **no puede** depender de que el cliente "no cambie el
+id" porque el cliente está completamente fuera del control del servidor: es
+simplemente texto que viaja en una URL, y cualquier usuario puede editarlo a
+mano, con `curl`, con las herramientas de desarrollador del navegador o con un
+proxy como Burp. Confiar en el id que manda el cliente es confiar en que el
+atacante va a portarse bien — exactamente la regla de oro del Lab 07: "toda
+entrada del usuario es una mentira potencial".
+
+La verificación tiene que ocurrir **en el servidor**, usando la identidad que
+el servidor ya conoce de forma confiable (la sesión autenticada), no el
+parámetro que llega en la request:
+
+```python
+# mal: confía en el id del cliente
+perfil = db.get_perfil(request.args["id"])
+
+# bien: el servidor decide a quién pertenece el recurso
+usuario_actual = sesion.usuario_autenticado
+perfil = db.get_perfil(request.args["id"])
+if perfil.user_id != usuario_actual.id and not usuario_actual.es_admin:
+    return 403
+```
+
+El id en la URL puede seguir existiendo (es útil para navegar), pero el
+servidor tiene que validar, en cada request, que el recurso solicitado
+pertenece a quien está autenticado o que su rol lo autoriza explícitamente.
+
