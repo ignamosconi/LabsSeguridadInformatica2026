@@ -5,7 +5,6 @@
 - [x] **A.** Tool-use / function calling: cómo lo implementan Claude y OpenAI a
   nivel de API, y en qué se parecen y diferencian.
 
----
 
 ## Desarrollo
 
@@ -15,7 +14,6 @@ Tanto Anthropic (Claude) como OpenAI implementan un mecanismo que permite a los 
 
 Este laboratorio implementa exactamente ese mecanismo en `llm.py`, con dos clientes reales (`ClienteClaude`, `ClienteOpenAI`) y uno simulado (`ClienteMock`). Estudiar las diferencias de protocolo entre ambas APIs permite entender por qué el diseño agnóstico de `llm.py` existe y qué abstrae.
 
----
 
 ### Cómo lo implementa Claude (Anthropic)
 
@@ -177,7 +175,6 @@ La tabla muestra que las diferencias son de formato, no de concepto: ambas APIs 
 
 Esto es el **principio de acoplamiento a interfaces**: el agente depende de la abstracción, no de la implementación. Si mañana aparece un tercer proveedor (Gemini, Mistral), se agrega una tercera clase sin tocar el loop.
 
----
 
 ## Fuentes
 
@@ -185,7 +182,6 @@ Esto es el **principio de acoplamiento a interfaces**: el agente depende de la a
 2. OpenAI — Function calling guide: https://platform.openai.com/docs/guides/function-calling
 3. Código fuente del laboratorio: `labs/lab09-agentes/src/llm.py` (implementación de `ClienteClaude` y `ClienteOpenAI` lado a lado, para comparación directa)
 
----
 
 ## Reflexión
 
