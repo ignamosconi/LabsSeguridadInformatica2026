@@ -200,7 +200,71 @@ al paso siguiente**, en vez de defender cada paso por sí mismo.
   un vault de secretos (o como mínimo variables de entorno inyectadas en
   runtime, nunca expuestas vía HTTP) y rotarlos periódicamente.
 
-<!-- TODO: H-04 a H-06 -->
+### H-04 · Portal interno sin control de acceso, descubierto vía `robots.txt`
+- **Severidad:** Alta · **CVSS:** `AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` —
+  **7.5 (CVSS 3.1)**. Nota: puntaje ajustado al contexto — el portal en sí
+  solo expone un formulario de login y un comentario con metadatos, pero es
+  la puerta a H-01, por lo que se lo trata como hallazgo de alta prioridad
+  pese a no divulgar datos sensibles por sí mismo.
+- **Ubicación:** `/portal-rrhh` (referenciado desde `robots.txt`); HTML con
+  comentario interno.
+- **Descripción:** un portal administrativo de RRHH es alcanzable
+  públicamente, sin segmentación de red ni control de acceso previo (ni
+  siquiera un 404 genérico), y su única protección es "no estar linkeado" —
+  lo cual `robots.txt` contradice activamente, ya que ese archivo existe
+  justamente para decirle a los crawlers qué rutas existen y evitar.
+- **Evidencia (reproducible):**
+  ```bash
+  curl -s http://phantomcorp/robots.txt        # -> Disallow: /portal-rrhh
+  curl -s http://phantomcorp/portal-rrhh       # -> formulario + FLAG{final_recon_portal}
+  ```
+- **Impacto:** "seguridad por oscuridad" como único control. Expone la
+  superficie de ataque completa (H-01) a cualquiera en la red, sin exigir
+  ni siquiera estar en una VPN o segmento interno.
+- **Remediación:** segmentar los portales administrativos en una red/VLAN
+  interna no alcanzable desde el mismo origen que el sitio público, sumado a
+  autenticación robusta (y, siguiendo el Lab 03, 2FA/TOTP). No depender de
+  que una ruta "no esté linkeada" — y jamás anunciarla en `robots.txt`.
+
+### H-05 · Comentarios/metadatos de depuración en HTML de producción
+- **Severidad:** Media · **CVSS:** `AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` —
+  **5.3 (CVSS 3.1)**.
+- **Ubicación:** comentario HTML en la respuesta de `/portal-rrhh`.
+- **Descripción:** el HTML servido incluye comentarios internos (en este
+  caso, con información de depuración/flag) que no deberían llegar al
+  cliente en un entorno real.
+- **Evidencia (reproducible):** ver respuesta de `curl -s
+  http://phantomcorp/portal-rrhh` en H-04.
+- **Impacto:** por sí solo es bajo impacto directo, pero es un patrón de
+  higiene: cualquier dato de depuración dejado en el frontend es información
+  gratis para un atacante durante el recon.
+- **Remediación:** build de producción sin comentarios de debug; revisar el
+  pipeline de CI/CD para que strip de comentarios/metadatos sea parte del
+  build, no una convención manual.
+
+### H-06 · Mensajes de error que revelan la consulta SQL subyacente
+- **Severidad:** Baja · **CVSS:** `AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N` —
+  **5.3 (CVSS 3.1)** acotado por el bajo impacto adicional dado que H-01 ya
+  es explotable sin necesidad de este detalle.
+- **Ubicación:** `POST /portal-rrhh/login` ante un payload que rompe la
+  sintaxis SQL sin comentar el resto de la query (p. ej. una sola comilla
+  suelta).
+- **Descripción:** el backend captura la excepción de SQLite y devuelve el
+  mensaje de error crudo (`Error SQL: <excepción>`) en la respuesta HTTP, en
+  lugar de un error genérico.
+- **Evidencia (reproducible):**
+  ```bash
+  curl -s -X POST http://phantomcorp/portal-rrhh/login \
+    --data-urlencode "user=admin'" --data-urlencode 'pass=x'
+  # -> "Error SQL: ..." con el mensaje de sqlite3
+  ```
+- **Impacto:** acelera la confirmación y el ajuste de una inyección SQL
+  (aquí no hizo falta, porque H-01 se explotó a ciegas en el primer intento,
+  pero en un caso más defendido esto facilita mucho el diagnóstico al
+  atacante).
+- **Remediación:** manejar las excepciones del lado del servidor y devolver
+  siempre un mensaje genérico ("credenciales inválidas") al cliente,
+  logueando el detalle real solo server-side.
 
 ---
 
