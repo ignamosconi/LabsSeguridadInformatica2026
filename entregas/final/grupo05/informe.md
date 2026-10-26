@@ -270,10 +270,35 @@ al paso siguiente**, en vez de defender cada paso por sí mismo.
 
 ## 5. Conclusión
 
-<!-- TODO -->
+El sistema "Clientes" de PhantomCorp quedó completamente comprometido: desde
+cero conocimiento y cero credenciales se llegó a ejecución de comandos como
+root y exfiltración de la base de clientes completa. Lo más relevante no es
+la cantidad de pasos (cuatro) sino que **cada paso individual era, por sí
+solo, prevenible con prácticas básicas** — nada de esta cadena requirió un
+exploit sofisticado ni un 0-day.
+
+El eslabón que, de haberse corregido primero, habría cortado la cadena antes
+es **H-01 (la inyección SQL del login)**: sin ese bypass no hay foothold, y
+sin foothold el atacante nunca llega al backup (H-03) ni, por lo tanto, al
+token que habilita la RCE (H-02). Dicho de otro modo: el "crown jewel" del
+sistema terminó protegido, en la práctica, únicamente por una consulta SQL
+mal escrita. Dicho esto, **H-02 (la RCE) es el hallazgo de mayor severidad
+aislada**: aun si se hubiera llegado al token por otra vía, un endpoint que
+ejecuta shell arbitrario sobre un token estático es inaceptable en
+cualquier escenario.
+
+La postura de seguridad general es débil: no hay defensa en profundidad —
+una sola falla en el primer paso destapa toda la cadena — y se repite un
+patrón de "seguridad por oscuridad" (portal no linkeado, backup "escondido"
+en una ruta no obvia) en lugar de controles de acceso reales. Recomendamos
+priorizar, en este orden: (1) parametrizar toda consulta SQL dinámica del
+sistema, (2) retirar `/api/reporte` o reescribirlo sin invocación de shell,
+(3) sacar backups y secretos de rutas servidas por el webserver, y (4)
+segmentar el portal administrativo detrás de autenticación y red interna.
 
 ---
 
 ## 6. Anexo
 
-<!-- TODO -->
+Bitácora completa de comandos: [`loot/bitacora.md`](loot/bitacora.md).
+Salida de `./ctf status final` (4/4 hitos): [`loot/ctf-status-final.txt`](loot/ctf-status-final.txt).
