@@ -121,7 +121,86 @@ al paso siguiente**, en vez de defender cada paso por sí mismo.
 
 ## 4. Hallazgos (detalle técnico)
 
-<!-- TODO: H-01 a H-06, ordenados por severidad -->
+### H-01 · Inyección SQL en el login del portal RRHH (bypass de autenticación)
+- **Severidad:** Crítica · **CVSS:** `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N` —
+  **9.1 (CVSS 3.1)**. Vector de red, sin complejidad ni privilegios ni
+  interacción de usuario, acceso sin restricción a toda la base; no afecta
+  disponibilidad directamente (por eso `A:N`), de ahí 9.1 y no 9.8-10.0.
+- **Ubicación:** `POST /portal-rrhh/login` (también aliasado como
+  `/portal/login`), parámetros `user` y `pass`.
+- **Descripción:** el backend arma la consulta por concatenación directa de
+  strings: `SELECT user, rol FROM users WHERE user='<user>' AND
+  pass='<pass>'`. Cualquier entrada que incluya una comilla simple rompe la
+  sintaxis esperada, y un comentario SQL (`-- `) anula el resto de la
+  cláusula.
+- **Evidencia (reproducible):**
+  ```bash
+  curl -s -X POST http://phantomcorp/portal-rrhh/login \
+    --data-urlencode "user=admin' -- " --data-urlencode 'pass=x'
+  # -> "Bienvenido admin. Dashboard RRHH." + FLAG{final_sqli_foothold}
+  ```
+- **Impacto:** bypass total de autenticación sin conocer ninguna
+  credencial. Es la puerta de entrada de toda la cadena: sin este hallazgo no
+  hay foothold, y sin foothold no hay acceso al resto del sistema.
+- **Remediación:** usar **consultas parametrizadas / prepared statements**
+  (`cursor.execute("... WHERE user=? AND pass=?", (user, pass))`) en lugar de
+  interpolar strings. Adicionalmente: no comparar contraseñas en texto plano
+  contra la DB (hashearlas, como se trabajó en el Lab 03), y no asumir que el
+  front valida nada — la validación de verdad es server-side.
+
+### H-02 · Ejecución remota de comandos en `/api/reporte` (command injection)
+- **Severidad:** Crítica · **CVSS:** `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H` —
+  **10.0 (CVSS 3.1)**. El parámetro `cmd` se ejecuta en una shell del sistema
+  sin ninguna lista blanca ni sanitización: control total del contenedor,
+  incluida la capacidad de modificar o borrar (aunque no lo hicimos, por las
+  reglas del engagement).
+- **Ubicación:** `GET /api/reporte?token=...&cmd=...`.
+- **Descripción:** el valor de `cmd` se pasa directo a `os.popen(cmd)`. El
+  único control es que `token` matchee un valor fijo — una vez conocido ese
+  valor, el endpoint es una shell remota sin restricciones.
+- **Evidencia (reproducible):**
+  ```bash
+  curl -s 'http://phantomcorp/api/reporte?token=phantom-api-7c1e&cmd=id'
+  # -> uid=0(root) gid=0(root) groups=0(root)
+  curl -s --data-urlencode 'cmd=cat /app/priv/clientes.db.txt' -G \
+    'http://phantomcorp/api/reporte' --data-urlencode 'token=phantom-api-7c1e'
+  # -> clientes: 48210 registros (nombre, DNI, tarjeta). FLAG{final_crown_jewels}
+  ```
+- **Impacto:** control total del host (el proceso corre como root dentro del
+  contenedor) y exfiltración confirmada de los datos de clientes — el peor
+  escenario del alcance.
+- **Remediación:** eliminar la ejecución de comandos del sistema a partir de
+  input de usuario. Si el endpoint necesita generar un reporte, que invoque
+  una función específica con parámetros tipados (whitelisting de reportes
+  predefinidos), nunca una shell. Un token estático nunca debe ser el único
+  control de autorización sobre una funcionalidad de este riesgo — además,
+  rotarlo y no commitearlo/servirlo en ningún archivo de configuración.
+
+### H-03 · Backup de configuración expuesto sin autenticación, con secretos en texto plano
+- **Severidad:** Alta · **CVSS:** `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N` —
+  **7.5 (CVSS 3.1)**. Divulgación de información sin requerir ningún
+  privilegio ni interacción.
+- **Ubicación:** `GET /backup/rrhh.conf`.
+- **Descripción:** un archivo de configuración/backup queda accesible por
+  HTTP sin control de acceso, y contiene credenciales de base de datos
+  (`DB_USER`/`DB_PASS`) y el token de una API interna en texto plano.
+- **Evidencia (reproducible):**
+  ```bash
+  curl -s http://phantomcorp/backup/rrhh.conf
+  # -> DB_USER=rrhh_app / DB_PASS=Rh-2026 / API_TOKEN=phantom-api-7c1e
+  #    + FLAG{final_token_looted}
+  ```
+- **Impacto:** es el eslabón de post-explotación: convierte un foothold web
+  en credenciales reutilizables y en el token que habilita H-02. Es el típico
+  "secreto de más" que amplifica cualquier acceso previo.
+- **Remediación:** los backups y archivos de configuración nunca deben
+  quedar bajo una ruta servida por el webserver de la aplicación; moverlos
+  fuera del document root o detrás de autenticación/red interna. Los
+  secretos no van en archivos de texto plano versionados ni servidos: usar
+  un vault de secretos (o como mínimo variables de entorno inyectadas en
+  runtime, nunca expuestas vía HTTP) y rotarlos periódicamente.
+
+<!-- TODO: H-04 a H-06 -->
 
 ---
 
