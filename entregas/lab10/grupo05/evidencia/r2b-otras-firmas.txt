@@ -1,0 +1,13 @@
+# Contraste — firmas que SI detectan (mismo IDS, otras reglas)
+
+## path-traversal (con --path-as-is para que curl no normalice la ruta)
+$ curl -s --path-as-is "http://phantomcorp/admin/../../etc/passwd"
+🚨 ALERTA IDS · firma 'path-traversal' disparada.
+Tu request fue DETECTADA y logueada. FLAG{detection_triggered}
+Para ver todas las reglas: GET /soc/reglas
+
+## git-probe
+$ curl -s "http://phantomcorp/.git/config"
+🚨 ALERTA IDS · firma 'git-probe' disparada.
+Tu request fue DETECTADA y logueada. FLAG{detection_triggered}
+Para ver todas las reglas: GET /soc/reglas

@@ -1,0 +1,5 @@
+# R2 — Disparar una deteccion (User-Agent de scanner)
+$ curl -s -A sqlmap http://phantomcorp/
+🚨 ALERTA IDS · firma 'scanner-ua' disparada.
+Tu request fue DETECTADA y logueada. FLAG{detection_triggered}
+Para ver todas las reglas: GET /soc/reglas

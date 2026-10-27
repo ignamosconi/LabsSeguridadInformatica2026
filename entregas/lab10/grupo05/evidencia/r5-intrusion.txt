@@ -1,0 +1,4 @@
+# R5 — Intrusion real escondida en el ruido (analisis de logs)
+$ curl -s http://phantomcorp/soc | grep ALERT
+Tip: filtrá por ALERT. Hay UNA intrusion real que no disparaste vos.
+185.220.101.42 - GET /admin/../../etc/passwd 200 ALERT[path-traversal] # intrusion no atribuida -> FLAG{intrusion_in_the_noise}

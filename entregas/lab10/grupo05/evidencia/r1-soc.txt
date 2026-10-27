@@ -1,0 +1,8 @@
+# R1 — Acceso a la vista del SOC
+$ curl -s http://phantomcorp/soc | head -6
+=== PhantomCorp SOC · vista de eventos ===
+Acceso a la consola del SOC concedido. FLAG{soc_log_access}
+Tip: filtrá por ALERT. Hay UNA intrusion real que no disparaste vos.
+------------------------------------------------------------
+10.0.1.21 - GET /catalogo?item=1 200 BENIGN
+10.0.2.22 - GET /catalogo?item=2 200 BENIGN
