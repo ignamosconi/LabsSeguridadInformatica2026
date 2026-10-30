@@ -1,0 +1,34 @@
+# Lab Extra 3 — Defendé PhantomCorp · bitácora de comandos (Grupo 05), en orden.
+# Entorno: Ubuntu 24.04 (WSL2), Python 3.12. El verificador necesita Linux
+# porque ataca con ../../etc/passwd (en Windows /etc/passwd no existe y D5 daría
+# un falso "bloqueado"). Todo se corre desde la raíz del repo.
+
+# 1) Ver el ataque funcionar contra el objetivo ROTO (línea base: 0/5)
+python3 labs/labextra3-hardening/verificar-defensa.py \
+  | tee entregas/labextra3/grupo05/evidencia/salidas/verificador-inicial-0de5.txt
+
+# 2) Copiar el objetivo a nuestra entrega y parcharlo AHÍ (el original no se toca)
+mkdir -p entregas/labextra3/grupo05
+cp -r labs/labextra3-hardening/objetivo entregas/labextra3/grupo05/objetivo
+#   -> editamos entregas/labextra3/grupo05/objetivo/server.py (fixes D1..D5)
+
+# 3) Re-correr el ataque contra NUESTRA copia hasta 5/5
+python3 labs/labextra3-hardening/verificar-defensa.py \
+  --dir entregas/labextra3/grupo05/objetivo \
+  | tee entregas/labextra3/grupo05/evidencia/salidas/verificador-final-5de5.txt
+
+# 4) Regresión: la app tiene que SEGUIR funcionando después del parche
+PORT=18342 python3 entregas/labextra3/grupo05/objetivo/server.py &
+curl -s -w "HTTP %{http_code}\n" http://127.0.0.1:18342/
+curl -s -w "\nHTTP %{http_code}\n" "http://127.0.0.1:18342/login?user=admin&pass=sup3r-s3cr3t0"
+curl -s -w "HTTP %{http_code}\n" "http://127.0.0.1:18342/descargar?archivo=manual.txt"
+curl -s -w "\nHTTP %{http_code}\n" -u admin:sup3r-s3cr3t0 http://127.0.0.1:18342/backup
+#   (salidas en evidencia/salidas/regresion.txt)
+
+# 5) Entregar las 5 flags que dio el verificador y verificar el progreso
+./ctf submit extra3 D1 'FLAG{def_banner_neutralizado}'
+./ctf submit extra3 D2 'FLAG{def_debug_apagado}'
+./ctf submit extra3 D3 'FLAG{def_rutas_blindadas}'
+./ctf submit extra3 D4 'FLAG{def_sqli_parametrizado}'
+./ctf submit extra3 D5 'FLAG{def_traversal_bloqueado}'
+./ctf status extra3 | tee entregas/labextra3/grupo05/evidencia/salidas/ctf-status.txt
