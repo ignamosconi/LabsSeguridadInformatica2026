@@ -1,0 +1,31 @@
+# Comandos usados — Lab Extra 2 — Grupo 05
+# Los comandos de investigación se ejecutaron dentro de:
+#   labs/labextra2-git-forense/caso/repo-delata/
+# Los de submit se ejecutaron desde la raíz del repo.
+
+bash labs/labextra2-git-forense/caso/generar-caso.sh
+cd labs/labextra2-git-forense/caso/repo-delata
+
+# Visión general del historial
+git log --oneline --all
+
+# R1 — secreto en commit viejo
+git log -p -- config.py
+
+# R2 — commit perdido por reset
+git reflog
+git show [HASH-DEL-COMMIT-COLGADO]
+
+# R2 alternativo
+git fsck --lost-found
+
+# R3 — rama abandonada
+git log --oneline --all
+git branch -a
+git show feature/pasarela-pagos:.env.pasarela
+
+# Submit desde raíz del repo
+bash ctf submit extra2 R1 'FLAG{git_log_no_olvida}'
+bash ctf submit extra2 R2 'FLAG{git_reflog_rescata}'
+bash ctf submit extra2 R3 'FLAG{git_rama_abandonada}'
+bash ctf status extra2
