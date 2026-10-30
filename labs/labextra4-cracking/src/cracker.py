@@ -22,6 +22,7 @@ números, mayúscula inicial, etc.
 import argparse
 import hashlib
 import sys
+import time
 
 ITER_PBKDF2 = 200_000   # tiene que coincidir con sombra.txt
 
@@ -39,26 +40,54 @@ def descifrar_loot(hex_cifrado: str, password: str) -> str:
 
 def hash_de(algo: str, salt_hex: str, password: str) -> str:
     """Calcula el hash de un candidato EXACTAMENTE como lo hizo el servidor.
-    Pista: md5/sha256 son hash(salt_bytes + password); pbkdf2 usa
-    hashlib.pbkdf2_hmac('sha256', password, salt, ITER_PBKDF2)."""
-    # TODO
-    raise NotImplementedError("Completá hash_de()")
+    Para md5/sha256: hash(salt_bytes + password_bytes).
+    Para pbkdf2: pbkdf2_hmac('sha256', password_bytes, salt_bytes, ITER_PBKDF2)."""
+    salt = bytes.fromhex(salt_hex)
+    pwd = password.encode()
+    if algo == "pbkdf2":
+        return hashlib.pbkdf2_hmac("sha256", pwd, salt, ITER_PBKDF2).hex()
+    h = hashlib.new(algo)
+    h.update(salt + pwd)
+    return h.hexdigest()
 
 
 def cargar_sombra(ruta: str) -> list:
     """Devuelve una lista de tuplas (usuario, algo, salt_hex, hash_hex)
     parseando sombra.txt (ignorá líneas de comentario que empiezan con #)."""
-    # TODO
-    raise NotImplementedError("Completá cargar_sombra()")
+    entradas = []
+    with open(ruta) as fh:
+        for linea in fh:
+            linea = linea.strip()
+            if not linea or linea.startswith("#"):
+                continue
+            partes = linea.split(":")
+            entradas.append((partes[0], partes[1], partes[2], partes[3]))
+    return entradas
 
 
 def aplicar_reglas(palabra: str) -> list:
-    """Dado un lemma del diccionario, devolvé variantes probables:
-    la palabra sola, palabra+año (2024..2026), palabra+números comunes
-    (1, 12, 123), palabra con mayúscula inicial... Agregá las que se te ocurran.
-    Esto es lo que john hace con --rules y hashcat con -r."""
-    # TODO
-    raise NotImplementedError("Completá aplicar_reglas()")
+    """Dado un lemma del diccionario, devolvé variantes probables.
+    Cubre los patrones más comunes que usan los humanos al "endurecer" contraseñas."""
+    variantes = [palabra]
+    # mayúscula inicial
+    variantes.append(palabra.capitalize())
+    # todo mayúsculas
+    variantes.append(palabra.upper())
+    # sufijos de año (políticas de rotación anual)
+    for anio in ("2023", "2024", "2025", "2026"):
+        variantes.append(palabra + anio)
+        variantes.append(palabra.capitalize() + anio)
+    # sufijos numéricos comunes
+    for sufijo in ("1", "12", "123", "1234", "01", "007", "99", "00"):
+        variantes.append(palabra + sufijo)
+    # prefijos numéricos
+    variantes.append("1" + palabra)
+    variantes.append("123" + palabra)
+    # reemplazos leet básicos (a→@, e→3, i→1, o→0, s→$)
+    leet = palabra.replace("a", "@").replace("e", "3").replace("i", "1").replace("o", "0").replace("s", "$")
+    if leet != palabra:
+        variantes.append(leet)
+    return variantes
 
 
 def crackear(sombra: list, diccionario: str, con_reglas: bool = False) -> dict:
@@ -68,8 +97,41 @@ def crackear(sombra: list, diccionario: str, con_reglas: bool = False) -> dict:
 
     OJO con pbkdf2: 200.000 iteraciones por intento. ¿Conviene probarlo con el
     diccionario entero? ¿Qué te dice eso del algoritmo? (Pista: es la P4.)"""
-    # TODO
-    raise NotImplementedError("Completá crackear()")
+    with open(diccionario) as fh:
+        palabras = [l.strip() for l in fh if l.strip() and not l.startswith("#")]
+
+    halladas = {}
+    for usuario, algo, salt_hex, hash_esperado in sombra:
+        # No intentamos crackear pbkdf2 con el diccionario completo —
+        # 200k iteraciones × 50 palabras × variantes = minutos; y la contraseña
+        # de root no está en el diccionario de todos modos. Eso es la lección.
+        if algo == "pbkdf2":
+            print(f"  ⏭  {usuario} ({algo}): omitido — 200k iteraciones/intento hacen el ataque inviable")
+            continue
+
+        candidatos = []
+        for palabra in palabras:
+            if con_reglas:
+                candidatos.extend(aplicar_reglas(palabra))
+            else:
+                candidatos.append(palabra)
+
+        t0 = time.perf_counter()
+        intentos = 0
+        for candidato in candidatos:
+            intentos += 1
+            if hash_de(algo, salt_hex, candidato) == hash_esperado:
+                elapsed = time.perf_counter() - t0
+                vel = intentos / elapsed if elapsed > 0 else float("inf")
+                print(f"  ✓ {usuario} ({algo}): '{candidato}' — {intentos} intentos en {elapsed:.4f}s ({vel:.0f} intentos/s)")
+                halladas[usuario] = candidato
+                break
+        else:
+            elapsed = time.perf_counter() - t0
+            vel = intentos / elapsed if elapsed > 0 else float("inf")
+            print(f"  ✗ {usuario} ({algo}): no cayó — {intentos} intentos en {elapsed:.4f}s ({vel:.0f} intentos/s)")
+
+    return halladas
 
 
 def main() -> int:
