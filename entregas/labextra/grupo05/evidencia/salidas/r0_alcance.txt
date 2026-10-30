@@ -1,0 +1,17 @@
+$ curl -s --max-time 5 http://phantomcorp/ | head -20
+<!doctype html><html><head><title>PhantomCorp — Portal</title></head>
+<body style="font-family:sans-serif;max-width:720px;margin:3em auto">
+<h1>PhantomCorp S.A.</h1>
+<p>Portal público. Novedades, carreras y contacto.</p>
+<hr>
+<h2>Herramientas para empleados</h2>
+<form action="/preview" method="get">
+  <label>Previsualizar URL:&nbsp;
+    <input name="url" size="48" placeholder="https://ejemplo.com"></label>
+  <button type="submit">Ver</button>
+</form>
+<p style="color:#777"><small>La previsualización la genera el servidor,
+así no navegás sitios raros desde tu máquina. — IT</small></p>
+</body></html>
+$ curl -s --max-time 4 http://phantomcorp-intra/ ; echo exit=$?
+exit=6
