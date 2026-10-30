@@ -1,0 +1,48 @@
+# Bitácora de comandos — Lab Extra 4: Cracking de contraseñas
+# Grupo 05 — Magni, Mosconi, Presuttari, Terreno
+
+# Directorio de trabajo
+cd labs/labextra4-cracking
+
+# R1 y R2: Ataque de diccionario puro (sin reglas)
+python3 src/cracker.py crackear caso/sombra.txt caso/diccionario.txt
+
+# R3: Ataque con reglas de mangling (admin tiene "phantom2026" → lemma "phantom" + año)
+python3 src/cracker.py crackear caso/sombra.txt caso/diccionario.txt --reglas
+
+# Descifrado del loot de cada usuario crackeado
+python3 src/cracker.py descifrar caso/loot/operador.enc --password riverplate
+python3 src/cracker.py descifrar caso/loot/analista.enc --password matecocido
+python3 src/cracker.py descifrar caso/loot/admin.enc --password phantom2026
+
+# Entrega de flags
+./ctf submit extra4 R1 'FLAG{crack_diccionario_md5}'
+./ctf submit extra4 R2 'FLAG{crack_sha256_diccionario}'
+./ctf submit extra4 R3 'FLAG{crack_reglas_mangling}'
+
+# Verificación final
+./ctf status extra4
+
+# Medición de velocidad (para P1)
+python3 -c "
+import hashlib, time
+salt = bytes.fromhex('73346c372d3034')
+pw = 'testpassword'
+N = 20
+t0 = time.perf_counter()
+for _ in range(N):
+    hashlib.pbkdf2_hmac('sha256', pw.encode(), salt, 200000)
+t = time.perf_counter() - t0
+print(f'pbkdf2-200k: {N/t:.1f} intentos/s')
+t0 = time.perf_counter()
+for _ in range(100000):
+    h = hashlib.sha256(); h.update(salt + pw.encode()); h.hexdigest()
+t = time.perf_counter() - t0
+print(f'sha256: {100000/t:.0f} intentos/s')
+t0 = time.perf_counter()
+for _ in range(100000):
+    h = hashlib.md5(); h.update(salt + pw.encode()); h.hexdigest()
+t = time.perf_counter() - t0
+print(f'md5: {100000/t:.0f} intentos/s')
+"
+# Resultado: pbkdf2-200k: ~26 intentos/s | sha256: ~1.3M intentos/s | md5: ~1.2M intentos/s
