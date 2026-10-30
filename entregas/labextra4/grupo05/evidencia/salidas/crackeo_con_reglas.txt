@@ -1,0 +1,10 @@
+  ✓ operador (md5): 'riverplate' — 154 intentos en 0.0002s (916301 intentos/s)
+  ✓ analista (sha256): 'matecocido' — 220 intentos en 0.0002s (1093314 intentos/s)
+  ✓ admin (sha256): 'phantom2026' — 119 intentos en 0.0001s (1064286 intentos/s)
+  ⏭  root (pbkdf2): omitido — 200k iteraciones/intento hacen el ataque inviable
+  ✓ operador: riverplate
+  ✓ analista: matecocido
+  ✓ admin: phantom2026
+  ✗ root: no cayó (¿falta una regla? ¿es pbkdf2?)
+
+3/4 contraseñas recuperadas
