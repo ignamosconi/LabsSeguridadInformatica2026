@@ -134,3 +134,72 @@ Salida completa de `./ctf status extra` (archivada en
 [ OK ] ¡Lab extra COMPLETO! Ponete las pilas con la próxima unidad.
 ```
 
+## 3. Preguntas de análisis
+
+### P1 — ¿Por qué "la intranet no es alcanzable desde afuera" dejó de ser cierto?
+
+El diagrama del lab:
+
+```
+   atacante ──labnet──>  phantomcorp (web :80)  ──internalnet──>  phantomcorp-intra
+        │                        │                                        ▲
+        └─────────── ✗ NO hay ruta directa ──────────────────────────────┘
+```
+
+La frase es cierta **a nivel de red**: el atacante vive en `labnet` y la
+intranet en `internalnet` (`internal: true`), sin ruta entre ellas — por eso el
+`curl` directo da `exit=6`. Pero `phantomcorp` tiene **una pata en cada red**
+(`labnet` *y* `internalnet`). El componente que hizo alcanzable la intranet es
+el `/preview`: una funcionalidad de la DMZ que fetchea URLs arbitrarias **desde
+la posición de red del servidor**. El atacante no cruza el perímetro; lo cruza
+el servidor por él. El límite dejó de ser la red y pasó a ser "¿qué puede pedir
+el servidor?" — que, sin validación, es *cualquier cosa*.
+
+### P2 — El oráculo de escaneo de puertos (los mensajes de error)
+
+En R1 distinguimos puerto cerrado de abierto por lo que devolvía el `/preview`:
+
+- **Puerto cerrado** (`:9001`, `:8080`): `HTTP 502` + `<urlopen error [Errno
+  111] Connection refused>`. El SO del server rechazó la conexión al instante.
+- **Puerto abierto** (`:9000`): `HTTP 200` con el cuerpo HTML del servicio.
+
+Esa diferencia observable (error de conexión vs. contenido; y también el tiempo
+de respuesta — un *refused* es inmediato, un puerto filtrado daría *timeout*) es
+un **oráculo**: una señal que responde "sí/no" a la pregunta "¿hay algo
+escuchando en este puerto?". Repitiéndola sobre un rango de puertos convertimos
+el `/preview` en un **escáner de puertos de la red interna del servidor**, sin
+tener nosotros ninguna ruta a esa red. El server filtra texto de la *respuesta*
+pero sus propios mensajes de error ya filtran información de la *topología
+interna*. Es el mismo principio que una inyección SQL basada en errores o en
+tiempo: no necesitás que te devuelvan el dato, alcanza con que el sistema se
+comporte distinto según la respuesta.
+
+### P3 — Hallazgo profesional (R3)
+
+> **Título:** Exposición de backup de clientes vía SSRF en el previsualizador de
+> URLs del portal público.
+>
+> **Activo afectado:** Intranet corporativa `phantomcorp-intra`
+> (`internalnet`), recurso `/backups/clientes.json`. Alcanzada a través del
+> portal público `phantomcorp` (`GET /preview`).
+>
+> **Vector:** SSRF (CWE-918 / OWASP A10:2021). El endpoint
+> `GET /preview?url=` fetchea URLs provistas por el usuario sin validar el
+> destino (sin allowlist de hosts, sin bloqueo de IPs privadas/loopback). Un
+> atacante no autenticado en la red del portal fuerza al servidor —que tiene
+> interfaz en la red interna— a solicitar recursos internos y le devuelve la
+> respuesta.
+>
+> **Impacto:** Alto. Divulgación de información de terceros: un backup
+> pre-migración con razón social y CUIT de clientes (Aconcagua SRL —
+> 30-70998877-1; Comechingones SA — 30-71554433-6). Viola confidencialidad de
+> datos de clientes y la segmentación de red que se asumía como control. En un
+> entorno real implicaría notificación por normativa de datos personales
+> (en Argentina, Ley 25.326).
+>
+> **Evidencia:** petición
+> `GET http://phantomcorp/preview?url=http://phantomcorp-intra/backups/clientes.json`
+> devolvió `HTTP 200` con el JSON completo del backup. Transcripción en
+> `evidencia/salidas/r3_backup.txt`; backup identificado previamente en la home
+> de la intranet (`evidencia/salidas/r2_intranet.txt`).
+
