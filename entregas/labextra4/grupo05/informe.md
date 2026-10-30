@@ -129,3 +129,62 @@ empujan a los usuarios hacia patrones predecibles: `Phantom2026!`.
 - **Usar frases de contraseña:** `mate.cocido.con.azucar` es más larga y
   más difícil de crackear que `M@t3C0c1d0`.
 
+### P4 — Por qué root no cayó: trabajo por intento
+
+Cada intento contra PBKDF2-200k requiere **200.000 iteraciones de HMAC-SHA256**.
+Contra MD5 plano, una GPU moderna hace ~10⁹ intentos/s.
+Contra PBKDF2-200k, esa misma GPU hace ~5×10⁶ intentos/s
+(la GPU paraleliza pero cada intento es 200k veces más caro).
+
+Con 1.000 GPUs × 5×10⁶ intentos/s = 5×10⁹ intentos/s.
+El diccionario de 50 palabras × ~20 variantes = 1.000 candidatos:
+→ 1.000 / (5×10⁹) = 2×10⁻⁷ segundos — cae igual.
+
+Pero la contraseña de root es `Tq9#vL2!xZ8-wK7&nB4` (18 chars, aleatoria).
+Espacio: ~95^18 ≈ 10^35 combinaciones posibles.
+A 5×10⁹ intentos/s: 10^35 / 5×10⁹ ≈ 10^25 segundos.
+La edad del universo es 4×10^17 segundos.
+
+**Conclusión:** PBKDF2-200k + contraseña aleatoria larga = imposible de crackear
+con hardware actual o futuro previsible. Esa combinación es lo que implementamos
+en el Lab 03.
+
+### P5 — Respuesta como defensor de PhantomCorp
+
+**Acciones inmediatas (gestión de incidentes):**
+
+1. **Notificar al responsable de seguridad y al equipo legal** — el volcado
+   existe; hay que activar el proceso de respuesta a incidentes.
+2. **Invalidar todas las sesiones activas** y forzar cambio de contraseña
+   para las cuentas comprometidas (operador, analista, admin).
+3. **Revocar privilegios de admin** hasta confirmar que no hubo movimiento
+   lateral o persistencia.
+4. **Auditar logs** desde la fecha del loot para detectar acceso con
+   credenciales comprometidas.
+5. **Notificar a usuarios afectados** según Ley 25.326 (protección de datos
+   personales) y registrar el incidente.
+
+**Política de almacenamiento para el futuro:**
+
+- Algoritmo: **Argon2id** (OWASP recomendado) o PBKDF2-SHA256 con ≥ 200.000
+  iteraciones como mínimo; bcrypt con factor ≥ 12 como alternativa.
+- Salt: **único por usuario, aleatorio, ≥ 16 bytes**, generado con
+  `secrets.token_bytes()`.
+- Migración: al próximo login de cada usuario, re-hashear con el nuevo
+  algoritmo y eliminar el hash viejo.
+- Política de contraseñas: mínimo 12 caracteres, prohibición contra listas
+  conocidas, sin exigir composición compleja ni rotación periódica (NIST 800-63B).
+
+## 6. Conclusión
+
+PhantomCorp tenía tres cuentas con contraseñas débiles protegidas por
+algoritmos rápidos (MD5/SHA-256). Esto las hizo vulnerables a ataques de
+diccionario triviales. Solo `root`, con PBKDF2-200k y una contraseña aleatoria
+larga, era genuinamente segura.
+
+**Política recomendada:**
+> Usar **Argon2id** con parámetros OWASP (tiempo ≥ 1, memoria ≥ 64 MB,
+> paralelismo 1). Salt de 16 bytes aleatorio por usuario. Contraseñas de
+> mínimo 15 caracteres, validadas contra diccionarios conocidos. Sin rotación
+> forzada. Para las cuentas existentes: migración al re-login y revocación
+> inmediata de las comprometidas.
