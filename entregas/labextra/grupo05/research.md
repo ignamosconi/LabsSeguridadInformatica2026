@@ -47,3 +47,58 @@ de 80 millones de USD (OCC, 2020) y 190 millones en un acuerdo civil. La app
 - **Control de egreso y arreglo del WAF**: impedir que el componente de borde
   alcance `169.254.169.254`, y corregir la configuración que permitía el SSRF.
 
+## El metadata service e IMDSv2 (complemento a la Opción B)
+
+El metadata service expone, sin autenticación, configuración de la instancia y
+—lo crítico— las credenciales temporales del rol IAM. En **IMDSv1** alcanza un
+`GET` a `169.254.169.254`, y por eso un SSRF que solo refleja un GET basta para
+robarlas. **IMDSv2** vuelve el acceso *orientado a sesión*: primero hay que
+hacer un `PUT /latest/api/token` (con un header `X-aws-ec2-metadata-token-ttl-
+seconds`) para obtener un token, y recién después usar ese token en un header en
+cada `GET`. Eso bloquea el SSRF típico, que casi siempre puede forzar un `GET`
+simple pero no un `PUT` con headers propios; además IMDSv2 limita el hop TTL=1
+para que la respuesta no salga de la instancia. Es la misma idea que vimos en
+R1: "solo yo me hablo a mí mismo" deja de ser defensa cuando otro puede hablar
+por vos.
+
+## Pregunta de cierre — SSRF ("el server fetchea por vos") vs. inyección de comandos ("el server ejecuta por vos")
+
+**Similitud.** En ambas el atacante abusa de la *identidad y la posición* del
+servidor: no actúa él, actúa el servidor por él, con sus privilegios y su
+ubicación de red. En los dos casos la raíz es la misma —entrada del usuario que
+llega sin validar a una operación poderosa (una request de red, o la shell)— y
+los dos anulan el perímetro: da igual dónde esté el atacante si el servidor hace
+el trabajo sucio desde adentro.
+
+**Diferencia.** El SSRF te da el poder de *pedir* del servidor: leés lo que el
+servidor puede leer (R1–R3: panel interno, intranet, backup; en cloud,
+credenciales). La inyección de comandos (Lab 07) te da el poder de *ejecutar*:
+una shell, código arbitrario sobre el host. El SSRF está acotado a lo que el
+destino acepte responder por HTTP/otros esquemas; la RCE no tiene ese techo.
+
+**Cuál es más peligrosa.** En el caso general, **la inyección de comandos**:
+ejecución arbitraria es control total del host (lectura *y* escritura,
+persistencia, pivot), mientras que el SSRF es, en esencia, lectura/petición a
+través de un proxy. Dicho eso, el matiz importa: un SSRF contra el metadata
+service de la nube puede escalar a *comprometer toda la cuenta* —y por alcance
+(Capital One) eso iguala o supera a una RCE en un solo host. Nuestra conclusión:
+la RCE es peor por capacidad; el SSRF en cloud es peor por alcance. Lo que las
+une es la lección del lab: **confiar en la ubicación de red es una defensa
+ilusoria cuando la entrada del usuario llega a una operación poderosa.**
+
+---
+
+### Fuentes
+
+- U.S. DOJ — *United States v. Paige Thompson*, denuncia (W.D. Wash., 2019):
+  descripción del acceso al metadata service y a los buckets S3.
+  https://www.justice.gov/usao-wdwa/press-release/file/1188626/download
+- Krebs on Security — "What We Can Learn from the Capital One Hack" (2019):
+  https://krebsonsecurity.com/2019/08/what-we-can-learn-from-the-capital-one-hack/
+- AWS — *Use IMDSv2* (documentación EC2, flujo con token y mitigación de SSRF):
+  https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+- OWASP — *A10:2021 Server-Side Request Forgery (SSRF)* y *SSRF Prevention Cheat
+  Sheet*: https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/
+  · https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+- MITRE — *CWE-918: Server-Side Request Forgery (SSRF)*:
+  https://cwe.mitre.org/data/definitions/918.html
