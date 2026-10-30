@@ -203,3 +203,71 @@ comporte distinto según la respuesta.
 > `evidencia/salidas/r3_backup.txt`; backup identificado previamente en la home
 > de la intranet (`evidencia/salidas/r2_intranet.txt`).
 
+### P4 — Tres mitigaciones para `/preview`, de mejor a peor
+
+1. **Rediseñar: no fetchear destinos arbitrarios. Allowlist estricta de
+   destinos + salida por un egress proxy.** Si el preview solo necesita sitios
+   públicos conocidos, se define una lista blanca de dominios/esquemas
+   permitidos y todo pedido sale por un proxy de egreso que solo rutea a
+   Internet, sin acceso a `internalnet` ni a `127.0.0.1`. *Limitación:* exige
+   saber de antemano qué destinos son legítimos; si el caso de uso es "cualquier
+   URL pública", la allowlist se vuelve inmanejable y hay que apoyarse en el
+   control de egreso (que es lo que de verdad contiene el daño).
+
+2. **Validar el destino resolviendo la IP y bloqueando rangos
+   privados/loopback/link-local — después de resolver DNS y en cada redirect.**
+   Resolver el host, rechazar `127.0.0.0/8`, `10/8`, `172.16/12`, `192.168/16`,
+   `169.254/16` (metadata), `::1`, etc., y **reusar esa misma IP validada para
+   conectar** (no re-resolver). *Limitación:* es fácil hacerlo mal. Hay que
+   cubrir las codificaciones alternativas de IP y los bypass de nombre, y sobre
+   todo el **DNS rebinding**: un dominio que resuelve a una IP pública en la
+   validación y a `127.0.0.1` en la conexión. Si validás el string o resolvés
+   dos veces, se te escapa.
+
+3. **Filtrar strings "peligrosos" en la URL (bloquear `localhost`, `127.0.0.1`,
+   `internal`…).** Es la peor: da sensación de seguridad y no para casi nada.
+   Se evade con `http://127.1/`, con la IP en **decimal**
+   `http://2130706433/` (= 127.0.0.1), octal/hex, IPv6 `http://[::1]/`,
+   `http://0/`, un dominio atacante que **resuelve a 127.0.0.1**, o redirects
+   `3xx` hacia un destino interno. El filtrado de strings no entiende de
+   resolución de nombres ni de redirecciones; por eso nunca alcanza por sí
+   solo.
+
+> En resumen: la defensa real es de arquitectura (no dejar que el servicio
+> alcance la red interna / metadata — egress control + segmentación), no de
+> parseo de la URL.
+
+### P5 — Conexión con la nube: el metadata service `169.254.169.254`
+
+Es un endpoint **link-local** (IP `169.254.169.254`, no ruteable fuera de la
+instancia) que las nubes (AWS IMDS, GCP, Azure) exponen a cada VM para que
+consulte datos sobre sí misma: su configuración, user-data y, lo crítico, las
+**credenciales temporales del rol IAM** asociado a la instancia. Está pensado
+para que lo consulte *la propia instancia*, sin autenticación, confiando en que
+"si podés hablarle, es porque sos la instancia".
+
+Un SSRF en una app cloud es mucho más grave que en este lab porque permite que
+el atacante le pida al servidor `http://169.254.169.254/latest/meta-data/iam/
+security-credentials/<rol>` y se lleve esas credenciales temporales. Con ellas
+actúa como la aplicación contra toda la cuenta cloud (p. ej. leer buckets S3):
+deja de ser "leí una intranet" y pasa a **robo de credenciales y compromiso de
+la cuenta**. Es exactamente lo que le pasó a Capital One en 2019 (ver
+`research.md`). El paralelo con R1 es directo: en R1 el server se pedía a sí
+mismo (`127.0.0.1`) un panel que "solo escuchaba en localhost"; el metadata
+service es ese mismo "solo yo me hablo a mí mismo" llevado a la nube — y la
+mitigación de fondo es la misma idea que IMDSv2.
+
+## 4. Conclusión (resumen ejecutivo para el CTO de PhantomCorp)
+
+La intranet que daban por inalcanzable "porque está en una red interna" quedó
+completamente expuesta desde Internet a través de una sola funcionalidad del
+portal público: el previsualizador de URLs. Sin autenticarnos y sin explotar
+ningún servicio interno, conseguimos que el propio servidor nos leyera un panel
+de administración que "solo escucha en localhost", descubriera la intranet y
+nos entregara un backup con datos fiscales de clientes. La causa no es un bug
+aislado sino una suposición equivocada de arquitectura: *confiar en la ubicación
+de red como control de acceso*. Mientras un servicio de la DMZ pueda pedir URLs
+arbitrarias, el perímetro no existe. La corrección prioritaria es cortar el
+egreso de ese servicio hacia la red interna y el metadata service, y mover el
+control de "¿de dónde viene el pedido?" a "¿qué está autorizado a pedir este
+servicio?".
