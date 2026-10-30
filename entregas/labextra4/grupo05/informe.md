@@ -85,3 +85,47 @@ exactamente el patrón más previsible.
 ```
 (Ver `evidencia/salidas/ctf_status.txt` para la captura completa.)
 
+## 5. Preguntas P1–P5
+
+### P1 — Intentos/segundo por algoritmo
+
+Respondida en la sección 2. La clave: MD5 fue diseñado para integridad de
+datos (verificar archivos rápido), no para contraseñas. SHA-256 también.
+PBKDF2 fue diseñado específicamente para contraseñas: sus 200.000 iteraciones
+son el costo que el defensor le impone al atacante en cada intento. Con una GPU
+de 10⁹ intentos/s en MD5 y rockyou: cae en milisegundos. Contra PBKDF2-200k,
+esa misma GPU hace ~5.000 intentos/s → el diccionario entero tarda horas.
+
+### P2 — ¿Para qué sirve el salt si operador y analista cayeron igual?
+
+El salt no protege contra el diccionario. Protege contra:
+
+1. **Tablas precalculadas (rainbow tables):** sin salt, un atacante precomputa
+   `md5("riverplate")` una vez y lo cruza contra millones de hashes. Con salt
+   único por usuario, tiene que recomputar `md5(salt + "riverplate")` para
+   cada usuario individualmente — las tablas no sirven.
+
+2. **Ataque masivo:** sin salt, si dos usuarios tienen la misma contraseña,
+   sus hashes son idénticos → romper uno rompe ambos. Con salt, dos usuarios
+   con `riverplate` tienen hashes distintos → el atacante trabaja una cuenta
+   a la vez.
+
+Lo que el salt *no* bloquea es el ataque de diccionario sobre una cuenta
+específica: si la contraseña está en el diccionario, la iteración la encuentra
+sin importar el salt.
+
+### P3 — La contraseña del admin cumplía la política y cayó
+
+`phantom2026` tiene 10 caracteres, letras y números. Cayó porque sigue el
+patrón `lemma + año`, que es exactamente lo que cubren las reglas de mangling.
+Las políticas de complejidad ("al menos una mayúscula, un número, un símbolo")
+empujan a los usuarios hacia patrones predecibles: `Phantom2026!`.
+
+**NIST SP 800-63B** recomienda en cambio:
+- **Longitud sobre complejidad:** mínimo 8, preferiblemente ≥ 15 caracteres.
+- **Prohibir contraseñas conocidas** (listas de contraseñas comprometidas).
+- **No imponer rotación periódica** — empuja a variaciones predecibles.
+- **No exigir composición arbitraria** — aumenta patrones.
+- **Usar frases de contraseña:** `mate.cocido.con.azucar` es más larga y
+  más difícil de crackear que `M@t3C0c1d0`.
+
