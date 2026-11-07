@@ -43,8 +43,12 @@ def decodificar(token: str) -> tuple:
     """Devuelve (header, payload, firma_hex) SIN verificar nada.
     Pista: el token tiene 3 partes separadas por '.'; decodificá las dos
     primeras con b64url_dec + json.loads. La firma NO se json-parsea."""
-    # TODO
-    raise NotImplementedError("Completá decodificar()")
+    cab, payload, firma = token.split(".")
+    header = json.loads(b64url_dec(cab))
+    claims = json.loads(b64url_dec(payload))
+    # La firma son bytes opacos: se decodifica de base64url y se muestra en hex.
+    firma_bytes = b64url_dec(firma)
+    return header, claims, firma_bytes.hex()
 
 
 def firma_es_valida(token: str, secreto: bytes) -> bool:
@@ -52,8 +56,15 @@ def firma_es_valida(token: str, secreto: bytes) -> bool:
     firma del token (en tiempo constante: hmac.compare_digest).
     ESTO es lo único que un atacante necesita para probar candidatos OFFLINE:
     no hay rate limit, no hay logs, no hay lockout. El token ES el oráculo."""
-    # TODO
-    raise NotImplementedError("Completá firma_es_valida()")
+    try:
+        cab, payload, firma = token.split(".")
+    except ValueError:
+        return False
+    esperada = b64url(
+        hmac.new(secreto, f"{cab}.{payload}".encode(), hashlib.sha256).digest()
+    )
+    # compare_digest evita filtrar por temporización en qué byte difiere.
+    return hmac.compare_digest(firma, esperada)
 
 
 def crackear_secreto(token: str, diccionario: str) -> str:
