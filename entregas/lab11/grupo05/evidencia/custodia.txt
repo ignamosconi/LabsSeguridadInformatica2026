@@ -1,0 +1,28 @@
+Verificación de la cadena de custodia — Lab 11
+Comando: shasum -a 256 -c evidencia.sha256
+Fecha de análisis: 2026-11-07
+
+disco/etc/passwd.snippet: OK
+disco/listado.txt: OK
+disco/var/www/uploads/shell.php.evidencia.txt: OK
+logs/access.log: OK
+logs/auth.log: FAILED
+memoria/bash_history.txt: OK
+memoria/lsof.txt: OK
+memoria/netstat.txt: OK
+memoria/pslist.txt: OK
+shasum: WARNING: 1 computed checksum did NOT match
+
+Resultado: exit=1 (1 = al menos un archivo no coincide)
+
+Hallazgo: logs/auth.log NO coincide con el hash registrado en la custodia.
+
+  Hash registrado en evidencia.sha256:
+    0000decafbad0000f1e2d3c4b5a6978800112233445566778899aabbccddeeff
+
+  Hash calculado sobre el archivo actual:
+    7d18039d128d0df7a245ca02f469ea02cd1d4f205a24fb33c5bcf7041b66e9ab
+
+El resto de los archivos (8/9) verifica OK. El archivo alterado contiene,
+en las líneas 5-8, un comentario que reconoce la edición posterior a la
+captura y el marcador recuperado del journal: FLAG{dfir_custodia_alterada}.
