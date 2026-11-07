@@ -6,7 +6,7 @@ timeline.py — Ampliación del Lab 11. Reconstruí la línea de tiempo del ataq
 automáticamente, en vez de leer el log a ojo. Solo biblioteca estándar.
 
 Analizar a mano 20 líneas se puede; analizar 200.000 no. Por eso el forense
-scriptea. Completá los TODO y corré:
+scriptea. Para reconstruir el ataque, corré:
 
     python3 timeline.py ../caso/logs/access.log --ip 185.220.101.42
 
@@ -52,9 +52,6 @@ def construir_timeline(path: str, ip: str = None) -> list:
 
 def clasificar_fase(ruta: str) -> str:
     """Mapea una petición a la fase del ataque, para etiquetar la timeline.
-    Devolvé una etiqueta corta: RECON · ENUM · EXPLOIT · RCE · WEBSHELL · EXFIL.
-
-    Mapea una petición a la fase del ataque, para etiquetar la timeline.
     Devuelve una etiqueta corta: RECON · ENUM · EXPLOIT · RCE · WEBSHELL · EXFIL.
 
     El orden de los chequeos importa: las fases más específicas van primero
